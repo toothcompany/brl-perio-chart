@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3498db">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Perio Chart">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<title>Perio Chart 입력 프로그램</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    background: #f0f2f5;
+    padding: 15px;
+    font-size: 13px;
+}
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    padding: 15px 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.header h1 { font-size: 20px; color: #2c3e50; }
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+.header-controls label { font-weight: bold; color: #555; }
+.header-controls input[type="text"],
+.header-controls input[type="date"] {
+    padding: 6px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 120px;
+}
+.header-controls select {
+    padding: 6px 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+    cursor: pointer;
+}
+.btn-drive { background: #8e44ad; color: #fff; }
+.btn-drive:hover { background: #7d3c98; }
+.sheet-settings {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border-left: 4px solid #8e44ad;
+}
+.sheet-settings-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.sheet-settings-row label { font-weight: bold; color: #555; font-size: 13px; }
+.sheet-settings-row input[type="text"] {
+    padding: 6px 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    flex: 1;
+    min-width: 240px;
+}
+.sheet-settings-hint {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 8px;
+    line-height: 1.5;
+}
+.cloud-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #eafaf1;
+    color: #27ae60;
+}
+.cloud-status.syncing { background: #fef5e7; color: #e67e22; }
+.cloud-status.error { background: #fdedec; color: #e74c3c; }
+.cloud-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: currentColor;
+}
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-save { background: #27ae60; color: #fff; }
+.btn-save:hover { background: #219a52; }
+.btn-new { background: #3498db; color: #fff; }
+.btn-new:hover { background: #2980b9; }
+.btn-export { background: #e67e22; color: #fff; }
+.btn-export:hover { background: #d35400; }
+.btn-clear { background: #e74c3c; color: #fff; }
+.btn-clear:hover { background: #c0392b; }
+
+.chart-container {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 15px;
+    overflow-x: auto;
+}
+.chart-container h2 {
+    font-size: 16px;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 6px;
+}
+
+/* ===== TOOTH TABLE LAYOUT ===== */
+.tooth-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.tooth-table td, .tooth-table th {
+    padding: 0;
+    vertical-align: middle;
+}
+.tooth-table .label-cell {
+    width: 40px;
+    min-width: 40px;
+    font-weight: bold;
+    color: #555;
+    text-align: right;
+    padding-right: 6px;
+    font-size: 12px;
+}
+.tooth-table .side-cell {
+    width: 22px;
+    min-width: 22px;
+    font-weight: bold;
+    color: #888;
+    text-align: center;
+    font-size: 11px;
+}
+.tooth-table .tooth-col {
+    width: 28px;
+    min-width: 28px;
+    max-width: 28px;
+    text-align: center;
+}
+.tooth-num-cell {
+    font-weight: bold;
+    font-size: 13px;
+    color: #2c3e50;
+    background: #ecf0f1;
+    text-align: center;
+    border-radius: 3px;
+    padding: 3px 0;
+}
+.tooth-num-cell.missing-active {
+    background: #f8d7da;
+    color: #999;
+    text-decoration: line-through;
+}
+.missing-cb {
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+    vertical-align: middle;
+    margin-left: 2px;
+    accent-color: #e74c3c;
+}
+.sub-label {
+    font-size: 9px;
+    color: #999;
+    text-align: center;
+}
+.quad-sep {
+    width: 6px !important;
+    min-width: 6px !important;
+    max-width: 6px !important;
+    border-left: 3px solid #3498db;
+}
+
+/* Measure group divider */
+.measure-divider td {
+    height: 6px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+/* Input cells */
+.tooth-table input[type="text"] {
+    width: 26px;
+    height: 24px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 12px;
+    padding: 0;
+    background: #fafafa;
+    display: block;
+    margin: 0 auto;
+}
+.tooth-table input[type="text"]:focus {
+    border-color: #3498db;
+    background: #fff;
+    outline: none;
+    box-shadow: 0 0 3px rgba(52,152,219,0.3);
+}
+.tooth-table input.bop-input {
+    background: #fff5f5;
+    cursor: pointer;
+}
+.tooth-table input.bop-input.active {
+    background: #e74c3c;
+    color: #fff;
+    font-weight: bold;
+}
+.tooth-table input.disabled-input {
+    background: #e9ecef !important;
+    color: #ccc !important;
+    cursor: not-allowed;
+    border-color: #dee2e6 !important;
+    box-shadow: none !important;
+}
+/* ===================================================== */
+/* 태블릿 최적화 (아이패드 / 갤럭시탭) */
+/* ===================================================== */
+
+/* 가로 스크롤 안내 (좁은 화면에서만 표시) */
+.scroll-hint {
+    display: none;
+    font-size: 12px;
+    color: #e67e22;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* --- 세로형(Portrait): 손가락 입력 크게, 가로 스크롤 허용 --- */
+@media (max-width: 1180px) and (orientation: portrait) {
+    body { padding: 10px; }
+    .tooth-table input[type="text"] {
+        width: 34px;
+        height: 38px;
+        font-size: 16px;   /* iOS 자동 확대 방지: 16px 이상 */
+    }
+    .tooth-table .tooth-col { width: 36px; min-width: 36px; max-width: 36px; }
+    .missing-cb { width: 20px; height: 20px; }
+    .tooth-num-cell { font-size: 15px; padding: 6px 0; }
+    .scroll-hint { display: block; }
+    .header-controls input[type="text"],
+    .header-controls input[type="date"],
+    .header-controls select { min-height: 42px; font-size: 15px; }
+    .btn { min-height: 44px; font-size: 15px; }
+}
+
+/* --- 가로형(Landscape): 전체 치열이 한 화면에 보이도록 --- */
+@media (max-width: 1400px) and (orientation: landscape) {
+    body { padding: 10px; font-size: 12px; }
+    .chart-container { padding: 10px; }
+    .tooth-table input[type="text"] {
+        width: 30px;
+        height: 34px;
+        font-size: 15px;
+    }
+    .tooth-table .tooth-col { width: 32px; min-width: 32px; max-width: 32px; }
+    .missing-cb { width: 18px; height: 18px; }
+    .btn { min-height: 40px; }
+    .header-controls select,
+    .header-controls input { min-height: 38px; }
+}
+
+/* --- 터치 기기 공통: 버튼·입력 터치 영역 확보 --- */
+@media (pointer: coarse) {
+    .btn { padding: 10px 16px; }
+    .sheet-settings-row input[type="text"] { min-height: 42px; font-size: 15px; }
+    /* BOP 셀도 손가락으로 누르기 쉽게 */
+    .tooth-table input.bop-input { min-height: 34px; }
+}
+
+.tooth-table input.bop-input.disabled-input {
+    background: #e9ecef !important;
+}
+
+.section-divider {
+    height: 3px;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    margin: 10px 0;
+    border-radius: 2px;
+}
+
+.status-bar {
+    background: #fff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.patient-count { font-weight: bold; color: #27ae60; }
+.status-msg { color: #7f8c8d; }
+
+.saved-list {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 15px 20px;
+    margin-top: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+.saved-list h3 { margin-bottom: 8px; color: #2c3e50; }
+.saved-list table { width: 100%; border-collapse: collapse; }
+.saved-list th, .saved-list td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 12px;
+}
+.saved-list th { background: #ecf0f1; font-weight: bold; }
+.saved-list .btn-delete {
+    background: #e74c3c; color: #fff; border: none;
+    padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+}
+.saved-list .btn-edit {
+    background: #3498db; color: #fff; border: none;
+    padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;
+    margin-right: 4px;
+}
+
+.keyboard-hint {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 8px 15px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #856404;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Perio Chart 입력 프로그램</h1>
+    <div class="header-controls">
+        <label>검사일:</label>
+        <input type="date" id="examDate">
+        <label>ID:</label>
+        <input type="text" id="patientId" placeholder="환자 ID">
+        <label>회차:</label>
+        <select id="visit">
+            <option value="baseline">Baseline</option>
+            <option value="mid">Mid-point (8주)</option>
+            <option value="end">End-point (6개월)</option>
+        </select>
+        <button class="btn btn-save" onclick="savePatient()">저장</button>
+        <button class="btn btn-new" onclick="newPatient()">새 환자</button>
+        <button class="btn btn-export" onclick="exportExcel()">엑셀 내보내기</button>
+        <button class="btn btn-drive" onclick="openSheetSettings()">시트 연동 설정</button>
+        <button class="btn btn-clear" onclick="clearAll()">전체 초기화</button>
+    </div>
+</div>
+
+<div class="keyboard-hint">
+    <strong>입력 안내:</strong>
+    숫자 입력 시 자동으로 다음 칸 이동 |
+    BOP: 클릭 또는 <strong>/</strong> 키로 출혈 토글 (빨간색=출혈) |
+    결측치: 치아번호 옆 체크박스 선택 시 해당 치아 입력 비활성화 |
+    <strong>회차(baseline/mid/end)별로 따로 저장</strong>됩니다 |
+    <strong>저장 시 클라우드 + 구글시트 회차탭으로 자동 전송</strong> |
+    <strong>GR·BOP 빈칸은 자동 0 처리</strong>, <strong>PD는 모든 칸 입력 필수 (0 입력 불가)</strong> (결측 제외)
+</div>
+
+<div class="status-bar">
+    <span class="patient-count">저장된 기록: <span id="patientCountDisplay">0</span>건</span>
+    <span class="cloud-status" id="cloudStatus"><span class="cloud-dot"></span><span id="cloudStatusText">클라우드 연결됨</span></span>
+    <span class="status-msg" id="statusMsg">새 환자 데이터를 입력해주세요.</span>
+</div>
+
+<div class="sheet-settings" id="sheetSettings" style="display:none;">
+    <div class="sheet-settings-row">
+        <label>Apps Script 웹앱 URL:</label>
+        <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <label>보안키(선택):</label>
+        <input type="text" id="sheetSecret" placeholder="SECRET (비워도 됨)" style="width:160px;">
+        <button class="btn btn-save" onclick="saveSheetSettings()">설정 저장</button>
+        <button class="btn btn-export" onclick="testSheetSync()">연결 테스트</button>
+    </div>
+    <div class="sheet-settings-hint">
+        저장 버튼을 누를 때마다 회차 탭(Baseline/Mid-point/End-point)에 행으로 자동 누적됩니다.
+        URL은 이 기기에 저장되며, 같은 공유 계정 시트로 모든 조사자의 데이터가 모입니다.
+    </div>
+</div>
+
+<!-- 상악 (Upper) -->
+<div class="chart-container">
+    <h2>상악 (Upper)</h2>
+    <div class="scroll-hint">← 좌우로 스크롤하여 전체 치아를 입력하세요 (가로 모드 권장) →</div>
+    <div id="upperChart"></div>
+</div>
+
+<div class="section-divider"></div>
+
+<!-- 하악 (Lower) -->
+<div class="chart-container">
+    <h2>하악 (Lower)</h2>
+    <div id="lowerChart"></div>
+</div>
+
+<!-- Saved patients list -->
+<div class="saved-list">
+    <h3>저장된 환자 목록</h3>
+    <table>
+        <thead>
+            <tr><th>#</th><th>ID</th><th>회차</th><th>검사일</th><th>저장 시간</th><th>작업</th></tr>
+        </thead>
+        <tbody id="savedListBody"></tbody>
+    </table>
+</div>
+
+<script>
+// =====================================================
+// DATA STRUCTURE & TOOTH DEFINITIONS
+// =====================================================
+const upperRightTeeth = [17, 16, 15, 14, 13, 12, 11];
+const upperLeftTeeth  = [21, 22, 23, 24, 25, 26, 27];
+const upperTeeth = [...upperRightTeeth, ...upperLeftTeeth];
+
+const lowerRightTeeth = [47, 46, 45, 44, 43, 42, 41];
+const lowerLeftTeeth  = [31, 32, 33, 34, 35, 36, 37];
+const lowerTeeth = [...lowerRightTeeth, ...lowerLeftTeeth];
+
+let savedPatients = [];
+let editingIndex = -1;
+let missingTeeth = new Set();
+
+// =====================================================
+// EXCEL HEADER BUILDER (matches original exactly)
+// =====================================================
+function buildExcelHeaders() {
+    const headers = ['ID', 'Visit', 'ExamDate'];
+    const measures = ['GR', 'PD', 'BOP'];
+    for (const measure of measures) {
+        for (const tooth of upperTeeth) {
+            let isLeft = tooth >= 21 && tooth <= 27;
+            if (isLeft) {
+                headers.push(`${measure}_${tooth}_BM_1`, `${measure}_${tooth}_BMid_1`, `${measure}_${tooth}_BD_1`);
+            } else {
+                headers.push(`${measure}_${tooth}_BD_1`, `${measure}_${tooth}_BMid_1`, `${measure}_${tooth}_BM_1`);
+            }
+        }
+        for (const tooth of upperTeeth) {
+            let isLeft = tooth >= 21 && tooth <= 27;
+            if (isLeft) {
+                headers.push(`${measure}_${tooth}_PM_1`, `${measure}_${tooth}_PMid_1`, `${measure}_${tooth}_PD_1`);
+            } else {
+                headers.push(`${measure}_${tooth}_PD_1`, `${measure}_${tooth}_PMid_1`, `${measure}_${tooth}_PM_1`);
+            }
+        }
+        for (const tooth of lowerTeeth) {
+            let isLeft = tooth >= 31 && tooth <= 37;
+            if (isLeft) {
+                headers.push(`${measure}_${tooth}_BM_1`, `${measure}_${tooth}_BMid_1`, `${measure}_${tooth}_BD_1`);
+            } else {
+                headers.push(`${measure}_${tooth}_BD_1`, `${measure}_${tooth}_BMid_1`, `${measure}_${tooth}_BM_1`);
+            }
+        }
+        for (const tooth of lowerTeeth) {
+            let isLeft = tooth >= 31 && tooth <= 37;
+            if (isLeft) {
+                headers.push(`${measure}_${tooth}_LM_1`, `${measure}_${tooth}_LMid_1`, `${measure}_${tooth}_LD_1`);
+            } else {
+                headers.push(`${measure}_${tooth}_LD_1`, `${measure}_${tooth}_LMid_1`, `${measure}_${tooth}_LM_1`);
+            }
+        }
+    }
+    return headers;
+}
+
+// =====================================================
+// BUILD COMBINED CHART (one table per jaw)
+// =====================================================
+
+// Upper jaw layout (top to bottom, matching PDF):
+//   BOP B-row | BOP P-row | GR B-row | GR P-row | PD B-row | PD P-row
+//   --- tooth numbers + missing checkboxes ---
+//   PD P-row | PD B-row | ... (this is for lower, not here)
+
+// Lower jaw layout (top to bottom):
+//   --- tooth numbers + missing checkboxes ---
+//   PD L-row | PD B-row | GR L-row | GR B-row | BOP L-row | BOP B-row
+
+function buildCombinedChart(containerId, teeth, jaw) {
+    // jaw: 'upper' or 'lower'
+    const container = document.getElementById(containerId);
+
+    // Surfaces
+    const surf1 = jaw === 'upper' ? 'B' : 'L';  // first surface per measure
+    const surf2 = jaw === 'upper' ? 'P' : 'B';   // second surface per measure
+    const surf1Label = jaw === 'upper' ? 'B' : 'L';
+    const surf2Label = jaw === 'upper' ? 'P' : 'B';
+
+    // Measure order
+    const measureOrder = jaw === 'upper'
+        ? ['BOP', 'GR', 'PD']   // top to bottom for upper
+        : ['PD', 'GR', 'BOP'];  // top to bottom for lower
+
+    // Total data columns = label(40) + side(22) + 7*3*28(teeth right) + sep(6) + 7*3*28(teeth left) + side(22)
+    // colgroup
+    let html = '<table class="tooth-table"><colgroup>';
+    html += '<col style="width:40px">';   // measure label
+    html += '<col style="width:22px">';   // side label (B/P/L)
+    for (let i = 0; i < teeth.length; i++) {
+        if (i === 7) html += '<col style="width:6px">'; // quad separator
+        html += '<col class="tooth-col"><col class="tooth-col"><col class="tooth-col">';
+    }
+    html += '<col style="width:22px">';   // side label right
+    html += '</colgroup>';
+
+    // Helper: build one data row
+    function dataRow(measure, surfacePrefix, sideLabel) {
+        let r = `<tr><td class="label-cell">${measure}</td>`;
+        r += `<td class="side-cell">${sideLabel}</td>`;
+        for (let i = 0; i < teeth.length; i++) {
+            const tooth = teeth[i];
+            if (i === 7) r += '<td></td>'; // quad sep (handled by rowspan on tooth-num row, but we need a cell)
+            const isLeft = (tooth >= 21 && tooth <= 27) || (tooth >= 31 && tooth <= 37);
+            let pos1, pos2, pos3;
+            if (isLeft) {
+                pos1 = `${surfacePrefix}M`;
+                pos2 = `${surfacePrefix}Mid`;
+                pos3 = `${surfacePrefix}D`;
+            } else {
+                pos1 = `${surfacePrefix}D`;
+                pos2 = `${surfacePrefix}Mid`;
+                pos3 = `${surfacePrefix}M`;
+            }
+            for (const pos of [pos1, pos2, pos3]) {
+                const inputId = `${measure}_${tooth}_${pos}`;
+                if (measure === 'BOP') {
+                    r += `<td><input type="text" class="bop-input" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" readonly onclick="toggleBOP(this)" onkeydown="handleBOPKey(event, this)"></td>`;
+                } else {
+                    r += `<td><input type="text" inputmode="numeric" pattern="[0-9]*" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" maxlength="2" oninput="handleNumInput(this)" onkeydown="handleNavKey(event, this)"></td>`;
+                }
+            }
+        }
+        r += `<td class="side-cell">${sideLabel}</td>`;
+        r += '</tr>';
+        return r;
+    }
+
+    // Helper: tooth number row
+    function toothNumRow() {
+        let r = '<tr><td class="label-cell"></td><td class="side-cell"></td>';
+        for (let i = 0; i < teeth.length; i++) {
+            const tooth = teeth[i];
+            if (i === 7) r += '<td class="quad-sep" rowspan="1"></td>';
+            r += `<td colspan="3" class="tooth-num-cell" id="tn_${containerId}_${tooth}">`;
+            r += `${tooth}<input type="checkbox" class="missing-cb" data-tooth="${tooth}" onchange="toggleMissing(${tooth})" title="결측치">`;
+            r += '</td>';
+        }
+        r += '<td class="side-cell"></td>';
+        r += '</tr>';
+        return r;
+    }
+
+    // Helper: sub-label row
+    function subLabelRow() {
+        let r = '<tr><td class="label-cell"></td><td class="side-cell"></td>';
+        for (let i = 0; i < teeth.length; i++) {
+            const tooth = teeth[i];
+            if (i === 7) r += '<td></td>';
+            const isLeft = (tooth >= 21 && tooth <= 27) || (tooth >= 31 && tooth <= 37);
+            if (isLeft) {
+                r += '<td class="sub-label">M</td><td class="sub-label">Mi</td><td class="sub-label">D</td>';
+            } else {
+                r += '<td class="sub-label">D</td><td class="sub-label">Mi</td><td class="sub-label">M</td>';
+            }
+        }
+        r += '<td class="side-cell"></td>';
+        r += '</tr>';
+        return r;
+    }
+
+    // Helper: divider between measure groups
+    function dividerRow() {
+        const totalCols = 2 + teeth.length * 3 + 1 + 1; // label + side + teeth*3 + sep + side
+        return `<tr class="measure-divider"><td colspan="${totalCols}"></td></tr>`;
+    }
+
+    // === BUILD ROWS ===
+    // Measure rows above tooth numbers
+    for (let m = 0; m < measureOrder.length; m++) {
+        const measure = measureOrder[m];
+        html += dataRow(measure, surf1, surf1Label);
+        html += dataRow(measure, surf2, surf2Label);
+        if (m < measureOrder.length - 1) html += dividerRow();
+    }
+
+    // Tooth number row + sub-labels
+    html += toothNumRow();
+    html += subLabelRow();
+
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+function buildAllCharts() {
+    buildCombinedChart('upperChart', upperTeeth, 'upper');
+    buildCombinedChart('lowerChart', lowerTeeth, 'lower');
+}
+
+// =====================================================
+// MISSING TOOTH HANDLING
+// =====================================================
+function toggleMissing(tooth) {
+    // Find any checkbox for this tooth to get state
+    const allCbs = document.querySelectorAll(`input.missing-cb[data-tooth="${tooth}"]`);
+    // Use the one that was just clicked (it has the new state)
+    let isChecked = false;
+    for (const cb of allCbs) {
+        if (cb.matches(':checked')) { isChecked = true; break; }
+    }
+
+    // Sync all checkboxes
+    allCbs.forEach(cb => { cb.checked = isChecked; });
+
+    if (isChecked) {
+        missingTeeth.add(tooth);
+    } else {
+        missingTeeth.delete(tooth);
+    }
+
+    // Update tooth-num-cell styling
+    document.querySelectorAll(`[id^="tn_"][id$="_${tooth}"]`).forEach(cell => {
+        cell.classList.toggle('missing-active', isChecked);
+    });
+
+    // Disable/enable all data inputs for this tooth
+    document.querySelectorAll(`input[data-tooth="${tooth}"]`).forEach(input => {
+        if (input.classList.contains('missing-cb')) return;
+        if (isChecked) {
+            input.classList.add('disabled-input');
+            input.setAttribute('tabindex', '-1');
+            if (input.classList.contains('bop-input')) input.classList.remove('active');
+            input.value = '';
+        } else {
+            input.classList.remove('disabled-input');
+            input.removeAttribute('tabindex');
+        }
+    });
+}
+
+// =====================================================
+// INPUT HANDLING
+// =====================================================
+function handleNumInput(el) {
+    if (el.classList.contains('disabled-input')) return;
+    const measure = el.getAttribute('data-measure');
+    if (measure === 'PD') {
+        // PD(치주낭 깊이)는 0이 될 수 없음 → 0 / 음수 입력 차단
+        el.value = el.value.replace(/[^0-9]/g, '');
+        if (el.value === '0') {
+            el.value = '';
+            flashInvalid(el);
+            return;
+        }
+        // 두 자리 중 앞자리가 0인 경우(예: 05)도 방지
+        if (el.value.length === 2 && el.value[0] === '0') {
+            el.value = el.value[1];
+        }
+    } else {
+        // GR 등은 0·음수 허용
+        el.value = el.value.replace(/[^0-9\-]/g, '');
+    }
+    if (el.value.length === 1 && el.value !== '-') {
+        moveToNext(el);
+    }
+}
+
+function flashInvalid(el) {
+    el.style.background = '#fdedec';
+    setTimeout(() => { el.style.background = ''; }, 400);
+}
+
+function handleNavKey(event, el) {
+    if (el.classList.contains('disabled-input')) return;
+    if (event.key === 'Enter' || event.key === 'Tab') {
+        if (!event.shiftKey) { event.preventDefault(); moveToNext(el); }
+    }
+    if (event.key === 'ArrowRight') { event.preventDefault(); moveToNext(el); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); moveToPrev(el); }
+}
+
+function handleBOPKey(event, el) {
+    if (el.classList.contains('disabled-input')) return;
+    if (event.key === '/' || event.key === '1' || event.key === ' ') {
+        event.preventDefault();
+        toggleBOP(el);
+        moveToNext(el);
+    } else if (event.key === '0') {
+        event.preventDefault();
+        el.value = '';
+        el.classList.remove('active');
+        moveToNext(el);
+    } else if (event.key === 'Tab' || event.key === 'Enter') {
+        if (!event.shiftKey) { event.preventDefault(); moveToNext(el); }
+    } else if (event.key === 'ArrowRight') { event.preventDefault(); moveToNext(el); }
+    else if (event.key === 'ArrowLeft') { event.preventDefault(); moveToPrev(el); }
+}
+
+function toggleBOP(el) {
+    if (el.classList.contains('disabled-input')) return;
+    if (el.classList.contains('active')) {
+        el.classList.remove('active');
+        el.value = '';
+    } else {
+        el.classList.add('active');
+        el.value = '1';
+    }
+}
+
+function moveToNext(el) {
+    const allInputs = getAllInputsInOrder();
+    let idx = allInputs.indexOf(el);
+    for (let i = idx + 1; i < allInputs.length; i++) {
+        if (!allInputs[i].classList.contains('disabled-input')) {
+            allInputs[i].focus();
+            return;
+        }
+    }
+}
+
+function moveToPrev(el) {
+    const allInputs = getAllInputsInOrder();
+    let idx = allInputs.indexOf(el);
+    for (let i = idx - 1; i >= 0; i--) {
+        if (!allInputs[i].classList.contains('disabled-input')) {
+            allInputs[i].focus();
+            return;
+        }
+    }
+}
+
+function getAllInputsInOrder() {
+    const containers = ['upperChart', 'lowerChart'];
+    let inputs = [];
+    for (const cid of containers) {
+        const el = document.getElementById(cid);
+        inputs = inputs.concat([...el.querySelectorAll('input[type="text"]')]);
+    }
+    return inputs;
+}
+
+// =====================================================
+// DATA COLLECTION
+// =====================================================
+function collectData() {
+    const data = {};
+    const dataInputs = document.querySelectorAll('.chart-container input[type="text"]');
+    for (const input of dataInputs) {
+        const measure = input.dataset.measure;
+        const tooth = input.dataset.tooth;
+        const pos = input.dataset.pos;
+        if (!measure || !tooth || !pos) continue;
+
+        const toothNum = parseInt(tooth);
+        const key = `${measure}_${tooth}_${pos}_1`;
+
+        if (missingTeeth.has(toothNum)) continue;
+
+        const val = input.value.trim();
+
+        if (measure === 'BOP') {
+            data[key] = val === '1' ? 1 : 0;
+        } else if (measure === 'GR') {
+            data[key] = val === '' ? 0 : parseInt(val);
+        } else {
+            if (val !== '') {
+                data[key] = parseInt(val);
+            }
+        }
+    }
+    return data;
+}
+
+function validatePD() {
+    const pdInputs = document.querySelectorAll('input[data-measure="PD"]');
+    const emptyPD = [];
+    for (const input of pdInputs) {
+        const tooth = parseInt(input.dataset.tooth);
+        if (missingTeeth.has(tooth)) continue;
+        if (input.value.trim() === '') {
+            emptyPD.push(input);
+        }
+    }
+    return emptyPD;
+}
+
+function loadData(data, missing) {
+    const allInputs = document.querySelectorAll('.chart-container input[type="text"]');
+    for (const input of allInputs) {
+        input.value = '';
+        input.classList.remove('active');
+        input.classList.remove('disabled-input');
+        input.removeAttribute('tabindex');
+    }
+
+    // Reset missing
+    missingTeeth = new Set(missing || []);
+    document.querySelectorAll('.missing-cb').forEach(cb => {
+        cb.checked = false;
+    });
+    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
+
+    for (const tooth of missingTeeth) {
+        document.querySelectorAll(`input.missing-cb[data-tooth="${tooth}"]`).forEach(cb => {
+            cb.checked = true;
+        });
+        toggleMissing(tooth);
+    }
+
+    for (const [key, val] of Object.entries(data)) {
+        const parts = key.split('_');
+        if (parts.length < 4) continue;
+        const measure = parts[0];
+        const tooth = parts[1];
+        const posStr = parts.slice(2, parts.length - 1).join('');
+        const inputId = `${measure}_${tooth}_${posStr}`;
+        const input = document.getElementById(inputId);
+        if (input && !input.classList.contains('disabled-input')) {
+            if (measure === 'BOP' && val == 1) {
+                input.value = '1';
+                input.classList.add('active');
+            } else if (measure !== 'BOP' && val !== 0 && val !== '') {
+                input.value = val;
+            }
+        }
+    }
+}
+
+// =====================================================
+// CLOUD STORAGE (artifact built-in) + LOCAL FALLBACK
+// =====================================================
+const STORAGE_KEY = 'perio_chart_patients';
+const CLOUD_KEY = 'brl_perio_patients';
+const hasCloud = (typeof window !== 'undefined' && window.storage && typeof window.storage.set === 'function');
+
+function setCloudStatus(state, text) {
+    const el = document.getElementById('cloudStatus');
+    const txt = document.getElementById('cloudStatusText');
+    if (!el) return;
+    el.classList.remove('syncing', 'error');
+    if (state === 'syncing') el.classList.add('syncing');
+    if (state === 'error') el.classList.add('error');
+    if (text) txt.textContent = text;
+}
+
+function saveToLocal() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPatients));
+    } catch (e) {
+        console.warn('localStorage 저장 실패:', e);
+    }
+}
+
+function loadFromLocal() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            savedPatients = JSON.parse(raw);
+            return true;
+        }
+    } catch (e) {
+        console.warn('localStorage 불러오기 실패:', e);
+    }
+    return false;
+}
+
+// Persist to both cloud and local. Cloud is the source of truth across devices.
+async function persistData() {
+    saveToLocal(); // always keep a local copy (offline safety)
+    if (!hasCloud) {
+        setCloudStatus('error', '로컬 저장 (기기 전용)');
+        return;
+    }
+    setCloudStatus('syncing', '동기화 중...');
+    try {
+        await window.storage.set(CLOUD_KEY, JSON.stringify(savedPatients), false);
+        setCloudStatus('ok', `클라우드 저장됨 (${savedPatients.length}명)`);
+    } catch (e) {
+        console.warn('클라우드 저장 실패:', e);
+        setCloudStatus('error', '클라우드 오류 (로컬 저장됨)');
+    }
+}
+
+// Load from cloud first; fall back to local if cloud empty/unavailable.
+async function loadData_cloud() {
+    if (hasCloud) {
+        setCloudStatus('syncing', '클라우드 불러오는 중...');
+        try {
+            const res = await window.storage.get(CLOUD_KEY, false);
+            if (res && res.value) {
+                savedPatients = JSON.parse(res.value);
+                saveToLocal();
+                setCloudStatus('ok', `클라우드 동기화됨 (${savedPatients.length}명)`);
+                return true;
+            }
+            // cloud empty: migrate any existing local data up to cloud
+            if (loadFromLocal() && savedPatients.length > 0) {
+                await window.storage.set(CLOUD_KEY, JSON.stringify(savedPatients), false);
+                setCloudStatus('ok', `로컬→클라우드 이전됨 (${savedPatients.length}명)`);
+                return true;
+            }
+            setCloudStatus('ok', '클라우드 연결됨 (데이터 없음)');
+            return false;
+        } catch (e) {
+            console.warn('클라우드 불러오기 실패:', e);
+            setCloudStatus('error', '클라우드 오류 (로컬 사용)');
+            return loadFromLocal();
+        }
+    }
+    // no cloud available
+    setCloudStatus('error', '로컬 저장 (기기 전용)');
+    return loadFromLocal();
+}
+
+// =====================================================
+// SAVE / NEW / EXPORT
+// =====================================================
+function savePatient() {
+    const patientId = document.getElementById('patientId').value.trim();
+    const examDate = document.getElementById('examDate').value;
+
+    if (!patientId) {
+        alert('환자 ID를 입력해주세요.');
+        return;
+    }
+
+    const emptyPD = validatePD();
+    if (emptyPD.length > 0) {
+        emptyPD[0].style.border = '2px solid #e74c3c';
+        emptyPD[0].focus();
+        setTimeout(() => { emptyPD[0].style.border = ''; }, 3000);
+        alert(`PD 값이 ${emptyPD.length}개 비어있습니다. 결측치가 아닌 치아의 PD는 모두 입력해야 합니다.`);
+        return;
+    }
+
+    const data = collectData();
+    const visit = document.getElementById('visit').value;
+    const record = {
+        id: patientId,
+        examDate: examDate,
+        visit: visit,
+        data: data,
+        missingTeeth: [...missingTeeth],
+        savedAt: new Date().toLocaleString('ko-KR')
+    };
+
+    // Match existing record by ID + visit (so 3 visits per patient are separate rows)
+    const existingIdx = savedPatients.findIndex(p => p.id === patientId && (p.visit || 'baseline') === visit);
+
+    if (editingIndex >= 0) {
+        savedPatients[editingIndex] = record;
+        editingIndex = -1;
+        showStatus(`환자 ${patientId} (${visitLabel(visit)}) 데이터가 수정되었습니다.`);
+    } else if (existingIdx >= 0) {
+        if (!confirm(`환자 ${patientId}의 ${visitLabel(visit)} 데이터가 이미 있습니다. 덮어쓸까요?`)) return;
+        savedPatients[existingIdx] = record;
+        showStatus(`환자 ${patientId} (${visitLabel(visit)}) 데이터가 덮어쓰기되었습니다.`);
+    } else {
+        savedPatients.push(record);
+        showStatus(`환자 ${patientId} (${visitLabel(visit)}) 데이터가 저장되었습니다. (총 ${savedPatients.length}건)`);
+    }
+
+    updatePatientList();
+    updatePatientCount();
+    persistData();
+    syncRecordToSheet(record);
+}
+
+function visitLabel(v) {
+    return v === 'mid' ? 'Mid-point' : v === 'end' ? 'End-point' : 'Baseline';
+}
+
+function newPatient() {
+    document.getElementById('patientId').value = '';
+    document.getElementById('examDate').value = '';
+    document.getElementById('examDate').valueAsDate = new Date();
+    editingIndex = -1;
+
+    const allInputs = document.querySelectorAll('.chart-container input[type="text"]');
+    for (const input of allInputs) {
+        input.value = '';
+        input.classList.remove('active');
+        input.classList.remove('disabled-input');
+        input.removeAttribute('tabindex');
+    }
+    missingTeeth = new Set();
+    document.querySelectorAll('.missing-cb').forEach(cb => { cb.checked = false; });
+    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
+
+    showStatus('새 환자 데이터를 입력해주세요.');
+    document.getElementById('patientId').focus();
+}
+
+function editPatient(index) {
+    const record = savedPatients[index];
+    document.getElementById('patientId').value = record.id;
+    document.getElementById('examDate').value = record.examDate || '';
+    document.getElementById('visit').value = record.visit || 'baseline';
+    editingIndex = index;
+    loadData(record.data, record.missingTeeth);
+    showStatus(`환자 ${record.id} 데이터를 편집 중입니다.`);
+    window.scrollTo(0, 0);
+}
+
+function deletePatient(index) {
+    if (confirm(`환자 ${savedPatients[index].id} (${visitLabel(savedPatients[index].visit||'baseline')})의 데이터를 삭제하시겠습니까?`)) {
+        savedPatients.splice(index, 1);
+        updatePatientList();
+        updatePatientCount();
+        persistData();
+        showStatus('환자 데이터가 삭제되었습니다.');
+    }
+}
+
+function clearAll() {
+    if (confirm('모든 저장된 데이터를 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        savedPatients = [];
+        editingIndex = -1;
+        newPatient();
+        updatePatientList();
+        updatePatientCount();
+        persistData();
+        showStatus('모든 데이터가 초기화되었습니다.');
+    }
+}
+
+function buildExcelRows() {
+    const headers = buildExcelHeaders();
+    const metaCols = 3; // ID, Visit, ExamDate
+    const rows = [headers];
+    for (const patient of savedPatients) {
+        const row = [patient.id, visitLabel(patient.visit || 'baseline'), patient.examDate || ''];
+        for (let i = metaCols; i < headers.length; i++) {
+            const colName = headers[i];
+            const val = patient.data[colName];
+            row.push(val !== undefined ? val : '');
+        }
+        rows.push(row);
+    }
+    return { headers, rows };
+}
+
+function exportExcel() {
+    if (savedPatients.length === 0) {
+        alert('저장된 환자 데이터가 없습니다.');
+        return;
+    }
+
+    const { headers, rows } = buildExcelRows();
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    const firstId = savedPatients[0].id;
+    const lastId = savedPatients[savedPatients.length - 1].id;
+    const sheetName = (savedPatients.length === 1 ? `${firstId}` : `${firstId}~${lastId}`).substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    const colWidths = headers.map((h, i) => ({ wch: i === 0 ? 10 : (i < 3 ? 12 : 6) }));
+    ws['!cols'] = colWidths;
+
+    const fileName = `perio_chart_data_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showStatus(`엑셀 파일이 다운로드되었습니다: ${fileName}`);
+}
+
+// =====================================================
+// GOOGLE DRIVE BACKUP
+// =====================================================
+// =====================================================
+// GOOGLE SHEET 자동 연동 (Apps Script 웹앱)
+// =====================================================
+const SHEET_URL_KEY = 'brl_perio_sheet_url';
+const SHEET_SECRET_KEY = 'brl_perio_sheet_secret';
+
+function getSheetUrl() {
+    try { return localStorage.getItem(SHEET_URL_KEY) || ''; } catch (e) { return ''; }
+}
+function getSheetSecret() {
+    try { return localStorage.getItem(SHEET_SECRET_KEY) || ''; } catch (e) { return ''; }
+}
+
+function openSheetSettings() {
+    const panel = document.getElementById('sheetSettings');
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+        document.getElementById('sheetUrl').value = getSheetUrl();
+        document.getElementById('sheetSecret').value = getSheetSecret();
+    }
+}
+
+function saveSheetSettings() {
+    const url = document.getElementById('sheetUrl').value.trim();
+    const secret = document.getElementById('sheetSecret').value.trim();
+    try {
+        localStorage.setItem(SHEET_URL_KEY, url);
+        localStorage.setItem(SHEET_SECRET_KEY, secret);
+    } catch (e) {}
+    showStatus(url ? '구글 시트 연동 URL이 저장되었습니다.' : '시트 연동 URL이 해제되었습니다.');
+}
+
+// 한 환자 기록 → headers/row 한 쌍으로 변환
+function recordToRow(record) {
+    const headers = buildExcelHeaders();
+    const metaCols = 3; // ID, Visit, ExamDate
+    const row = [record.id, visitLabel(record.visit || 'baseline'), record.examDate || ''];
+    for (let i = metaCols; i < headers.length; i++) {
+        const val = record.data[headers[i]];
+        row.push(val !== undefined ? val : '');
+    }
+    return { headers, row };
+}
+
+// 저장 시 해당 회차 탭으로 한 줄 전송 (Apps Script가 ID 기준 덮어쓰기/추가 처리)
+async function syncRecordToSheet(record) {
+    const url = getSheetUrl();
+    if (!url) return; // 설정 안 했으면 조용히 건너뜀
+    const { headers, row } = recordToRow(record);
+    const payload = {
+        visit: record.visit || 'baseline',
+        secret: getSheetSecret(),
+        headers: headers,
+        row: row
+    };
+    try {
+        // Apps Script 웹앱은 CORS 프리플라이트를 피하기 위해 text/plain 으로 보냅니다.
+        await fetch(url, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        showStatus(`구글 시트 [${visitLabel(record.visit||'baseline')}] 탭에 전송됨: ${record.id}`);
+    } catch (e) {
+        console.warn('시트 전송 실패:', e);
+        showStatus(`시트 전송 실패 (로컬·클라우드에는 저장됨): ${record.id}`);
+    }
+}
+
+// 연결 테스트: 더미 행을 보내지 않고, 설정된 URL 존재 여부만 안내
+function testSheetSync() {
+    const url = getSheetUrl();
+    if (!url) {
+        alert('먼저 Apps Script 웹앱 URL을 입력하고 설정 저장을 눌러주세요.');
+        return;
+    }
+    // no-cors 라서 응답 본문은 못 읽지만, 전송 시도 자체는 가능
+    const testRecord = {
+        id: '_TEST_', visit: 'baseline', examDate: new Date().toISOString().slice(0,10),
+        data: {}
+    };
+    syncRecordToSheet(testRecord);
+    alert('테스트 행(_TEST_)을 Baseline 탭으로 보냈습니다. 구글 시트에서 확인 후 그 줄은 삭제하세요.');
+}
+
+function showStatus(msg) {
+    document.getElementById('statusMsg').textContent = msg;
+}
+function updatePatientCount() {
+    document.getElementById('patientCountDisplay').textContent = savedPatients.length;
+}
+function updatePatientList() {
+    const tbody = document.getElementById('savedListBody');
+    if (savedPatients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">저장된 환자가 없습니다.</td></tr>';
+        return;
+    }
+    let html = '';
+    for (let i = 0; i < savedPatients.length; i++) {
+        const p = savedPatients[i];
+        const dataCount = Object.keys(p.data).length;
+        const missingCount = (p.missingTeeth || []).length;
+        html += `<tr>
+            <td>${i + 1}</td>
+            <td><strong>${p.id}</strong></td>
+            <td>${visitLabel(p.visit || 'baseline')}</td>
+            <td>${p.examDate || '-'}</td>
+            <td>${p.savedAt} (${dataCount}개 항목, 결측 ${missingCount}개)</td>
+            <td>
+                <button class="btn-edit" onclick="editPatient(${i})">수정</button>
+                <button class="btn-delete" onclick="deletePatient(${i})">삭제</button>
+            </td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+}
+
+// =====================================================
+// INITIALIZATION
+// =====================================================
+buildAllCharts();
+
+// 클라우드(우선) → 로컬 순으로 이전 데이터 불러오기
+(async function init() {
+    await loadData_cloud();
+    if (savedPatients.length > 0) {
+        showStatus(`이전 작업 데이터 ${savedPatients.length}건 불러옴.`);
+    }
+    updatePatientList();
+    updatePatientCount();
+})();
+
+document.getElementById('examDate').valueAsDate = new Date();
+</script>
+</body>
+</html>
