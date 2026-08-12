@@ -384,8 +384,10 @@ body {
 .np-next { background: #3498db; }
 .np-next:active { background: #2980b9; }
 .np-hide { background: #62717a; font-size: 13px; }
-.np-dir { background: #16a085; font-size: 14px; }
-.np-dir:active { background: #117a65; }
+.np-dir { background: #3498db; font-size: 14px; }
+.np-dir:active { background: #2980b9; }
+.np-dir.auto { background: #16a085; }
+.np-dir.auto:active { background: #117a65; }
 .np-dir.rev { background: #e67e22; }
 .np-dir.rev:active { background: #ca6f1e; }
 .numpad-show {
@@ -514,7 +516,11 @@ body.pad-open { padding-bottom: 280px; }
         <label>검사일:</label>
         <input type="date" id="examDate">
         <label>ID:</label>
-        <input type="text" id="patientId" placeholder="환자 ID">
+        <input type="text" id="patientId" placeholder="환자 ID" style="width:90px;">
+        <label>이름:</label>
+        <input type="text" id="patientName" placeholder="환자 이름" style="width:100px;">
+        <label>조사자:</label>
+        <input type="text" id="examiner" placeholder="조사자" style="width:90px;">
         <label>회차:</label>
         <select id="visit">
             <option value="baseline">Baseline</option>
@@ -532,7 +538,7 @@ body.pad-open { padding-bottom: 280px; }
 <div class="keyboard-hint">
     <strong>입력 안내:</strong>
     태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시, 손잡이 드래그로 이동) |
-    숫자 입력 시 자동 이동 — 패드의 <strong>▶정/◀역</strong> 버튼으로 이동 방향 전환 |
+    숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
     결측치: 치아번호 옆 체크박스 |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
@@ -580,7 +586,7 @@ body.pad-open { padding-bottom: 280px; }
     <h3>저장된 환자 목록</h3>
     <table>
         <thead>
-            <tr><th>#</th><th>ID</th><th>회차</th><th>검사일</th><th>저장 시간</th><th>작업</th></tr>
+            <tr><th>#</th><th>ID</th><th>이름</th><th>회차</th><th>검사일</th><th>저장 시간</th><th>작업</th></tr>
         </thead>
         <tbody id="savedListBody"></tbody>
     </table>
@@ -603,7 +609,7 @@ body.pad-open { padding-bottom: 280px; }
     <button class="np np-fn np-next" id="npNext" data-k="next">다음 ▶</button>
     <button class="np np-fn" data-k="minus">−</button>
     <button class="np" data-k="0">0</button>
-    <button class="np np-fn np-dir" id="dirBtn" data-k="dir" title="자동 이동 방향 전환">▶ 정</button>
+    <button class="np np-fn np-dir auto" id="dirBtn" data-k="dir" title="이동 방향: 자동/정/역 전환">⇄ 자동</button>
     <button class="np np-fn np-hide" data-k="hide" title="패드 숨기기">숨김</button>
 </div>
 <button class="numpad-show" id="numpadShow" onclick="toggleNumpad(true)" title="숫자패드 열기">⌨</button>
@@ -635,7 +641,7 @@ let missingTeeth = new Set();
 // EXCEL HEADER BUILDER (matches original exactly)
 // =====================================================
 function buildExcelHeaders() {
-    const headers = ['ID', 'Visit', 'ExamDate'];
+    const headers = ['ID', 'Name', 'Examiner', 'Visit', 'ExamDate'];
     const measures = ['GR', 'PD', 'BOP'];
     for (const measure of measures) {
         for (const tooth of upperTeeth) {
@@ -932,17 +938,79 @@ function padPress(k) {
 }
 
 // =====================================================
-// 자동 이동 방향 (정방향 ▶ / 역방향 ◀) — serpentine 차팅용
+// 자동 이동 방향 — serpentine 차팅
+// 기본 '자동': 상악 구개측(P) 줄은 27→17, 하악 협측(B) 줄은 37→47 역방향 진행.
+// 줄이 끝나면 다음 줄의 진행 시작점(정방향 줄=왼쪽 끝, 역방향 줄=오른쪽 끝)으로 점프.
 // =====================================================
-let moveDir = 1;
+let moveMode = 'auto'; // 'auto' | 'fwd' | 'rev'
 
-function advanceFrom(el) { if (moveDir === 1) moveToNext(el); else moveToPrev(el); }
-function retreatFrom(el) { if (moveDir === 1) moveToPrev(el); else moveToNext(el); }
+function rowKeyOf(el) {
+    const m = el.getAttribute('data-measure') || '';
+    const side = (el.getAttribute('data-pos') || '').charAt(0);
+    const arch = parseInt(el.getAttribute('data-tooth'), 10) < 30 ? 'U' : 'L';
+    return m + '_' + side + '_' + arch;
+}
+
+function rowDirFor(el) {
+    const side = (el.getAttribute('data-pos') || '').charAt(0);
+    const upper = parseInt(el.getAttribute('data-tooth'), 10) < 30;
+    if (upper && side === 'P') return -1;   // 상악 구개측: 27 → 17
+    if (!upper && side === 'B') return -1;  // 하악 협측: 37 → 47
+    return 1;
+}
+
+function enabledInputs() {
+    return getAllInputsInOrder().filter(i => !i.classList.contains('disabled-input'));
+}
+
+// 차팅 흐름 기준 한 칸 이동 (fwd=true: 진행, false: 되돌아가기)
+function moveStep(el, fwd) {
+    const all = enabledInputs();
+    const idx = all.indexOf(el);
+    if (idx < 0) return;
+    const key = rowKeyOf(el);
+    const step = (fwd ? 1 : -1) * rowDirFor(el);
+    const j = idx + step;
+    if (j >= 0 && j < all.length && rowKeyOf(all[j]) === key) {
+        all[j].focus();
+        return;
+    }
+    // 현재 줄 블록 경계
+    let s = idx, e = idx;
+    while (s - 1 >= 0 && rowKeyOf(all[s - 1]) === key) s--;
+    while (e + 1 < all.length && rowKeyOf(all[e + 1]) === key) e++;
+    if (fwd) {
+        const ns = e + 1;                          // 다음 줄(DOM) 시작
+        if (ns >= all.length) return;              // 전체 마지막 칸
+        const nk = rowKeyOf(all[ns]);
+        let ne = ns;
+        while (ne + 1 < all.length && rowKeyOf(all[ne + 1]) === nk) ne++;
+        (rowDirFor(all[ns]) === 1 ? all[ns] : all[ne]).focus();
+    } else {
+        const pe = s - 1;                          // 이전 줄(DOM) 끝
+        if (pe < 0) return;                        // 전체 첫 칸
+        const pk = rowKeyOf(all[pe]);
+        let ps = pe;
+        while (ps - 1 >= 0 && rowKeyOf(all[ps - 1]) === pk) ps--;
+        (rowDirFor(all[pe]) === 1 ? all[pe] : all[ps]).focus();
+    }
+}
+
+function advanceFrom(el) {
+    if (moveMode === 'fwd') return moveToNext(el);
+    if (moveMode === 'rev') return moveToPrev(el);
+    moveStep(el, true);
+}
+function retreatFrom(el) {
+    if (moveMode === 'fwd') return moveToPrev(el);
+    if (moveMode === 'rev') return moveToNext(el);
+    moveStep(el, false);
+}
 
 function toggleDir() {
-    moveDir = -moveDir;
+    moveMode = moveMode === 'auto' ? 'fwd' : (moveMode === 'fwd' ? 'rev' : 'auto');
     updateDirUI();
-    try { localStorage.setItem('perio_move_dir', String(moveDir)); } catch (e) {}
+    try { localStorage.setItem('perio_move_mode', moveMode); } catch (e) {}
 }
 
 function updateDirUI() {
@@ -950,9 +1018,14 @@ function updateDirUI() {
     const n = document.getElementById('npNext');
     const p = document.getElementById('npPrev');
     if (!d) return;
-    if (moveDir === 1) {
+    d.classList.remove('rev', 'auto');
+    if (moveMode === 'auto') {
+        d.textContent = '⇄ 자동';
+        d.classList.add('auto');
+        if (n) n.textContent = '다음 ▶';
+        if (p) p.textContent = '◀ 이전';
+    } else if (moveMode === 'fwd') {
         d.textContent = '▶ 정';
-        d.classList.remove('rev');
         if (n) n.textContent = '다음 ▶';
         if (p) p.textContent = '◀ 이전';
     } else {
@@ -965,7 +1038,8 @@ function updateDirUI() {
 
 (function initDir() {
     try {
-        if (localStorage.getItem('perio_move_dir') === '-1') moveDir = -1;
+        const m = localStorage.getItem('perio_move_mode');
+        if (m === 'fwd' || m === 'rev' || m === 'auto') moveMode = m;
     } catch (e) {}
     updateDirUI();
 })();
@@ -1361,6 +1435,8 @@ function savePatient() {
     const visit = document.getElementById('visit').value;
     const record = {
         id: patientId,
+        name: document.getElementById('patientName').value.trim(),
+        examiner: document.getElementById('examiner').value.trim(),
         examDate: examDate,
         visit: visit,
         data: data,
@@ -1396,6 +1472,8 @@ function visitLabel(v) {
 
 function newPatient() {
     document.getElementById('patientId').value = '';
+    document.getElementById('patientName').value = '';
+    // 조사자는 유지 (같은 조사자가 연속 입력하는 경우가 대부분)
     document.getElementById('examDate').value = '';
     document.getElementById('examDate').valueAsDate = new Date();
     editingIndex = -1;
@@ -1418,6 +1496,8 @@ function newPatient() {
 function editPatient(index) {
     const record = savedPatients[index];
     document.getElementById('patientId').value = record.id;
+    document.getElementById('patientName').value = record.name || '';
+    document.getElementById('examiner').value = record.examiner || '';
     document.getElementById('examDate').value = record.examDate || '';
     document.getElementById('visit').value = record.visit || 'baseline';
     editingIndex = index;
@@ -1450,10 +1530,10 @@ function clearAll() {
 
 function buildExcelRows() {
     const headers = buildExcelHeaders();
-    const metaCols = 3; // ID, Visit, ExamDate
+    const metaCols = 5; // ID, Name, Examiner, Visit, ExamDate
     const rows = [headers];
     for (const patient of savedPatients) {
-        const row = [patient.id, visitLabel(patient.visit || 'baseline'), patient.examDate || ''];
+        const row = [patient.id, patient.name || '', patient.examiner || '', visitLabel(patient.visit || 'baseline'), patient.examDate || ''];
         for (let i = metaCols; i < headers.length; i++) {
             const colName = headers[i];
             const val = patient.data[colName];
@@ -1479,7 +1559,7 @@ function exportExcel() {
     const sheetName = (savedPatients.length === 1 ? `${firstId}` : `${firstId}~${lastId}`).substring(0, 31);
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
-    const colWidths = headers.map((h, i) => ({ wch: i === 0 ? 10 : (i < 3 ? 12 : 6) }));
+    const colWidths = headers.map((h, i) => ({ wch: i === 0 ? 10 : (i < 5 ? 12 : 6) }));
     ws['!cols'] = colWidths;
 
     const fileName = `perio_chart_data_${new Date().toISOString().slice(0,10)}.xlsx`;
@@ -1526,8 +1606,8 @@ function saveSheetSettings() {
 // 한 환자 기록 → headers/row 한 쌍으로 변환
 function recordToRow(record) {
     const headers = buildExcelHeaders();
-    const metaCols = 3; // ID, Visit, ExamDate
-    const row = [record.id, visitLabel(record.visit || 'baseline'), record.examDate || ''];
+    const metaCols = 5; // ID, Name, Examiner, Visit, ExamDate
+    const row = [record.id, record.name || '', record.examiner || '', visitLabel(record.visit || 'baseline'), record.examDate || ''];
     for (let i = metaCols; i < headers.length; i++) {
         const val = record.data[headers[i]];
         row.push(val !== undefined ? val : '');
@@ -1586,7 +1666,7 @@ function updatePatientCount() {
 function updatePatientList() {
     const tbody = document.getElementById('savedListBody');
     if (savedPatients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">저장된 환자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">저장된 환자가 없습니다.</td></tr>';
         return;
     }
     let html = '';
@@ -1597,6 +1677,7 @@ function updatePatientList() {
         html += `<tr>
             <td>${i + 1}</td>
             <td><strong>${p.id}</strong></td>
+            <td>${p.name || '-'}</td>
             <td>${visitLabel(p.visit || 'baseline')}</td>
             <td>${p.examDate || '-'}</td>
             <td>${p.savedAt} (${dataCount}개 항목, 결측 ${missingCount}개)</td>
