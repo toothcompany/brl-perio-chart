@@ -58,6 +58,8 @@ body {
 }
 .btn-drive { background: #8e44ad; color: #fff; }
 .btn-drive:hover { background: #7d3c98; }
+.btn-gr0 { background: #16a085; color: #fff; }
+.btn-gr0:hover { background: #117a65; }
 .sheet-settings {
     background: #fff;
     border-radius: 10px;
@@ -529,6 +531,7 @@ body.pad-open { padding-bottom: 280px; }
         </select>
         <button class="btn btn-save" onclick="savePatient()">저장</button>
         <button class="btn btn-new" onclick="newPatient()">새 환자</button>
+        <button class="btn btn-gr0" onclick="fillEmptyGRZero()">GR 빈칸 0</button>
         <button class="btn btn-export" onclick="exportExcel()">엑셀 내보내기</button>
         <button class="btn btn-drive" onclick="openSheetSettings()">시트 연동 설정</button>
         <button class="btn btn-clear" onclick="clearAll()">전체 초기화</button>
@@ -542,7 +545,7 @@ body.pad-open { padding-bottom: 280px; }
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
     결측치: 치아번호 옆 체크박스 |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
-    <strong>GR·BOP 빈칸은 자동 0 처리</strong>, <strong>PD는 전체 입력 필수 (0 불가)</strong>
+    <strong>GR·BOP 빈칸은 저장 시 자동 0 처리</strong> — <strong>GR 빈칸 0</strong> 버튼으로 화면에 미리 채울 수도 있음, <strong>PD는 전체 입력 필수 (0 불가)</strong>
 </div>
 
 <div class="status-bar">
@@ -1240,6 +1243,17 @@ function applyChartZoom() {
 // =====================================================
 // DATA COLLECTION
 // =====================================================
+// 결측 제외한 빈 GR 칸을 화면에서도 0으로 일괄 채움 (저장 시엔 어차피 자동 0 처리)
+function fillEmptyGRZero() {
+    const grInputs = document.querySelectorAll('input[data-measure="GR"]');
+    let n = 0;
+    for (const input of grInputs) {
+        if (input.classList.contains('disabled-input')) continue;
+        if (input.value.trim() === '') { input.value = '0'; n++; }
+    }
+    showStatus(n > 0 ? `GR 빈칸 ${n}개를 0으로 채웠습니다.` : 'GR 빈칸이 없습니다.');
+}
+
 function collectData() {
     const data = {};
     const dataInputs = document.querySelectorAll('.chart-container input[type="text"]');
