@@ -383,7 +383,11 @@ body {
 .np-fn:active { background: #7b8f99; }
 .np-next { background: #3498db; }
 .np-next:active { background: #2980b9; }
-.np-hide { grid-column: span 2; background: #62717a; font-size: 13px; }
+.np-hide { background: #62717a; font-size: 13px; }
+.np-dir { background: #16a085; font-size: 14px; }
+.np-dir:active { background: #117a65; }
+.np-dir.rev { background: #e67e22; }
+.np-dir.rev:active { background: #ca6f1e; }
 .numpad-show {
     position: fixed;
     right: 12px;
@@ -527,8 +531,8 @@ body.pad-open { padding-bottom: 280px; }
 
 <div class="keyboard-hint">
     <strong>입력 안내:</strong>
-    태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시) |
-    숫자 입력 시 자동으로 다음 칸 이동 |
+    태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시, 손잡이 드래그로 이동) |
+    숫자 입력 시 자동 이동 — 패드의 <strong>▶정/◀역</strong> 버튼으로 이동 방향 전환 |
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
     결측치: 치아번호 옆 체크박스 |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
@@ -592,14 +596,15 @@ body.pad-open { padding-bottom: 280px; }
     <button class="np" data-k="4">4</button>
     <button class="np" data-k="5">5</button>
     <button class="np" data-k="6">6</button>
-    <button class="np np-fn" data-k="prev">◀ 이전</button>
+    <button class="np np-fn" id="npPrev" data-k="prev">◀ 이전</button>
     <button class="np" data-k="1">1</button>
     <button class="np" data-k="2">2</button>
     <button class="np" data-k="3">3</button>
-    <button class="np np-fn np-next" data-k="next">다음 ▶</button>
+    <button class="np np-fn np-next" id="npNext" data-k="next">다음 ▶</button>
     <button class="np np-fn" data-k="minus">−</button>
     <button class="np" data-k="0">0</button>
-    <button class="np np-fn np-hide" data-k="hide">⌨ 패드 숨김</button>
+    <button class="np np-fn np-dir" id="dirBtn" data-k="dir" title="자동 이동 방향 전환">▶ 정</button>
+    <button class="np np-fn np-hide" data-k="hide" title="패드 숨기기">숨김</button>
 </div>
 <button class="numpad-show" id="numpadShow" onclick="toggleNumpad(true)" title="숫자패드 열기">⌨</button>
 
@@ -869,7 +874,7 @@ function handleNumInput(el) {
         el.value = el.value.replace(/[^0-9\-]/g, '');
     }
     if (el.value.length === 1 && el.value !== '-') {
-        moveToNext(el);
+        advanceFrom(el);
     }
 }
 
@@ -893,11 +898,12 @@ document.addEventListener('focusin', (e) => {
 
 function padPress(k) {
     if (k === 'hide') { toggleNumpad(false); return; }
+    if (k === 'dir') { toggleDir(); return; }
     const el = activeNumInput;
     if (!el || el.classList.contains('disabled-input')) return;
     const isBOP = el.classList.contains('bop-input');
-    if (k === 'next') { moveToNext(el); return; }
-    if (k === 'prev') { moveToPrev(el); return; }
+    if (k === 'next') { advanceFrom(el); return; }
+    if (k === 'prev') { retreatFrom(el); return; }
     if (k === 'del') {
         el.value = '';
         if (isBOP) el.classList.remove('active');
@@ -913,8 +919,8 @@ function padPress(k) {
     }
     // BOP 칸: 1 = 출혈, 0 = 없음 (키보드와 동일)
     if (isBOP) {
-        if (k === '1') { el.value = '1'; el.classList.add('active'); moveToNext(el); }
-        else if (k === '0') { el.value = ''; el.classList.remove('active'); moveToNext(el); }
+        if (k === '1') { el.value = '1'; el.classList.add('active'); advanceFrom(el); }
+        else if (k === '0') { el.value = ''; el.classList.remove('active'); advanceFrom(el); }
         else flashInvalid(el);
         return;
     }
@@ -924,6 +930,45 @@ function padPress(k) {
     el.focus();
     handleNumInput(el);
 }
+
+// =====================================================
+// 자동 이동 방향 (정방향 ▶ / 역방향 ◀) — serpentine 차팅용
+// =====================================================
+let moveDir = 1;
+
+function advanceFrom(el) { if (moveDir === 1) moveToNext(el); else moveToPrev(el); }
+function retreatFrom(el) { if (moveDir === 1) moveToPrev(el); else moveToNext(el); }
+
+function toggleDir() {
+    moveDir = -moveDir;
+    updateDirUI();
+    try { localStorage.setItem('perio_move_dir', String(moveDir)); } catch (e) {}
+}
+
+function updateDirUI() {
+    const d = document.getElementById('dirBtn');
+    const n = document.getElementById('npNext');
+    const p = document.getElementById('npPrev');
+    if (!d) return;
+    if (moveDir === 1) {
+        d.textContent = '▶ 정';
+        d.classList.remove('rev');
+        if (n) n.textContent = '다음 ▶';
+        if (p) p.textContent = '◀ 이전';
+    } else {
+        d.textContent = '◀ 역';
+        d.classList.add('rev');
+        if (n) n.textContent = '◀ 다음';
+        if (p) p.textContent = '이전 ▶';
+    }
+}
+
+(function initDir() {
+    try {
+        if (localStorage.getItem('perio_move_dir') === '-1') moveDir = -1;
+    } catch (e) {}
+    updateDirUI();
+})();
 
 function toggleNumpad(open) {
     const pad = document.getElementById('numpad');
@@ -1012,7 +1057,7 @@ function padReclamp() {
     // 터치 기기: 기본 열림(이전 선택 기억), 데스크톱: 기본 닫힘·버튼 숨김
     if (saved === '1' || (saved === null && coarse)) {
         toggleNumpad(true);
-    } else if (coarse) {
+    } else {
         document.getElementById('numpadShow').style.display = 'block';
     }
     // 패드 버튼: pointerdown에서 처리해 입력칸 포커스를 뺏지 않음
