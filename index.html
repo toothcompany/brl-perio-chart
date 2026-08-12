@@ -143,6 +143,10 @@ body {
     border-collapse: collapse;
     table-layout: fixed;
 }
+.tooth-table col.label-col { width: 40px; }
+.tooth-table col.side-col { width: 22px; }
+.tooth-table col.sep-col { width: 6px; }
+.tooth-table td.ts { border-left: 2px solid #b8c4cc; }
 .tooth-table td, .tooth-table th {
     padding: 0;
     vertical-align: middle;
@@ -173,8 +177,8 @@ body {
 .tooth-num-cell {
     font-weight: bold;
     font-size: 13px;
-    color: #2c3e50;
-    background: #ecf0f1;
+    color: #fff;
+    background: #34495e;
     text-align: center;
     border-radius: 3px;
     padding: 3px 0;
@@ -300,6 +304,86 @@ body {
     .tooth-table input.bop-input { min-height: 34px; }
 }
 
+/* --- 소형 태블릿 가로(아이패드 미니 등): 전체 치열이 한 화면에 --- */
+@media (max-width: 1200px) and (orientation: landscape) {
+    body { padding: 6px; }
+    .header { padding: 8px 12px; margin-bottom: 8px; }
+    .header h1 { font-size: 15px; }
+    .chart-container { padding: 8px 6px; margin-bottom: 8px; }
+    .chart-container h2 { font-size: 13px; margin-bottom: 6px; padding-bottom: 4px; }
+    .tooth-table col.label-col { width: 32px; }
+    .tooth-table col.side-col { width: 14px; }
+    .tooth-table col.sep-col { width: 4px; }
+    .tooth-table .tooth-col { width: 21px; min-width: 21px; max-width: 21px; }
+    .tooth-table input[type="text"] {
+        width: 20px;
+        height: 30px;
+        font-size: 15px;      /* 폰트는 유지, 칸만 축소 */
+        border-radius: 2px;
+    }
+    .tooth-table input.bop-input { min-height: 30px; }
+    .tooth-table .label-cell { min-width: 32px; width: 32px; font-size: 11px; padding-right: 2px; }
+    .tooth-table .side-cell { width: 14px; min-width: 14px; font-size: 10px; }
+    .quad-sep { border-left-width: 2px; }
+    .tooth-num-cell { font-size: 12px; padding: 2px 0; }
+    .missing-cb { width: 14px; height: 14px; margin-left: 1px; }
+    .keyboard-hint { display: none; }
+    .scroll-hint { display: none; }
+}
+
+/* ===================================================== */
+/* 화면 숫자패드 (시스템 키보드 대체) */
+/* ===================================================== */
+.numpad {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 1000;
+    display: none;
+    grid-template-columns: repeat(4, 58px);
+    gap: 7px;
+    background: rgba(44, 62, 80, 0.96);
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+    touch-action: manipulation;
+}
+.numpad.open { display: grid; }
+.np {
+    height: 50px;
+    border: none;
+    border-radius: 9px;
+    font-size: 21px;
+    font-weight: bold;
+    background: #fff;
+    color: #2c3e50;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.np:active { background: #d6eaf8; transform: scale(0.96); }
+.np-fn { background: #8fa3ad; color: #fff; font-size: 14px; }
+.np-fn:active { background: #7b8f99; }
+.np-next { background: #3498db; }
+.np-next:active { background: #2980b9; }
+.np-hide { grid-column: span 2; background: #62717a; font-size: 13px; }
+.numpad-show {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 1000;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: none;
+    background: #3498db;
+    color: #fff;
+    font-size: 24px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    cursor: pointer;
+    display: none;
+}
+body.pad-open { padding-bottom: 280px; }
+
 .tooth-table input.bop-input.disabled-input {
     background: #e9ecef !important;
 }
@@ -388,12 +472,12 @@ body {
 
 <div class="keyboard-hint">
     <strong>입력 안내:</strong>
+    태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시) |
     숫자 입력 시 자동으로 다음 칸 이동 |
-    BOP: 클릭 또는 <strong>/</strong> 키로 출혈 토글 (빨간색=출혈) |
-    결측치: 치아번호 옆 체크박스 선택 시 해당 치아 입력 비활성화 |
-    <strong>회차(baseline/mid/end)별로 따로 저장</strong>됩니다 |
-    <strong>저장 시 클라우드 + 구글시트 회차탭으로 자동 전송</strong> |
-    <strong>GR·BOP 빈칸은 자동 0 처리</strong>, <strong>PD는 모든 칸 입력 필수 (0 입력 불가)</strong> (결측 제외)
+    BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
+    결측치: 치아번호 옆 체크박스 |
+    <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
+    <strong>GR·BOP 빈칸은 자동 0 처리</strong>, <strong>PD는 전체 입력 필수 (0 불가)</strong>
 </div>
 
 <div class="status-bar">
@@ -442,6 +526,26 @@ body {
         <tbody id="savedListBody"></tbody>
     </table>
 </div>
+
+<!-- 화면 숫자패드 (시스템 키보드 대체) -->
+<div class="numpad" id="numpad">
+    <button class="np" data-k="7">7</button>
+    <button class="np" data-k="8">8</button>
+    <button class="np" data-k="9">9</button>
+    <button class="np np-fn" data-k="del">⌫</button>
+    <button class="np" data-k="4">4</button>
+    <button class="np" data-k="5">5</button>
+    <button class="np" data-k="6">6</button>
+    <button class="np np-fn" data-k="prev">◀ 이전</button>
+    <button class="np" data-k="1">1</button>
+    <button class="np" data-k="2">2</button>
+    <button class="np" data-k="3">3</button>
+    <button class="np np-fn np-next" data-k="next">다음 ▶</button>
+    <button class="np np-fn" data-k="minus">−</button>
+    <button class="np" data-k="0">0</button>
+    <button class="np np-fn np-hide" data-k="hide">⌨ 패드 숨김</button>
+</div>
+<button class="numpad-show" id="numpadShow" onclick="toggleNumpad(true)" title="숫자패드 열기">⌨</button>
 
 <script>
 // =====================================================
@@ -533,13 +637,13 @@ function buildCombinedChart(containerId, teeth, jaw) {
     // Total data columns = label(40) + side(22) + 7*3*28(teeth right) + sep(6) + 7*3*28(teeth left) + side(22)
     // colgroup
     let html = '<table class="tooth-table"><colgroup>';
-    html += '<col style="width:40px">';   // measure label
-    html += '<col style="width:22px">';   // side label (B/P/L)
+    html += '<col class="label-col">';   // measure label
+    html += '<col class="side-col">';    // side label (B/P/L)
     for (let i = 0; i < teeth.length; i++) {
-        if (i === 7) html += '<col style="width:6px">'; // quad separator
+        if (i === 7) html += '<col class="sep-col">'; // quad separator
         html += '<col class="tooth-col"><col class="tooth-col"><col class="tooth-col">';
     }
-    html += '<col style="width:22px">';   // side label right
+    html += '<col class="side-col">';    // side label right
     html += '</colgroup>';
 
     // Helper: build one data row
@@ -560,12 +664,15 @@ function buildCombinedChart(containerId, teeth, jaw) {
                 pos2 = `${surfacePrefix}Mid`;
                 pos3 = `${surfacePrefix}M`;
             }
+            let firstCol = true;
             for (const pos of [pos1, pos2, pos3]) {
                 const inputId = `${measure}_${tooth}_${pos}`;
+                const tdCls = firstCol ? ' class="ts"' : '';
+                firstCol = false;
                 if (measure === 'BOP') {
-                    r += `<td><input type="text" class="bop-input" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" readonly onclick="toggleBOP(this)" onkeydown="handleBOPKey(event, this)"></td>`;
+                    r += `<td${tdCls}><input type="text" class="bop-input" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" readonly onclick="toggleBOP(this)" onkeydown="handleBOPKey(event, this)"></td>`;
                 } else {
-                    r += `<td><input type="text" inputmode="numeric" pattern="[0-9]*" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" maxlength="2" oninput="handleNumInput(this)" onkeydown="handleNavKey(event, this)"></td>`;
+                    r += `<td${tdCls}><input type="text" inputmode="none" id="${inputId}" data-measure="${measure}" data-tooth="${tooth}" data-pos="${pos}" maxlength="2" oninput="handleNumInput(this)" onkeydown="handleNavKey(event, this)"></td>`;
                 }
             }
         }
@@ -597,9 +704,9 @@ function buildCombinedChart(containerId, teeth, jaw) {
             if (i === 7) r += '<td></td>';
             const isLeft = (tooth >= 21 && tooth <= 27) || (tooth >= 31 && tooth <= 37);
             if (isLeft) {
-                r += '<td class="sub-label">M</td><td class="sub-label">Mi</td><td class="sub-label">D</td>';
+                r += '<td class="sub-label ts">M</td><td class="sub-label">Mi</td><td class="sub-label">D</td>';
             } else {
-                r += '<td class="sub-label">D</td><td class="sub-label">Mi</td><td class="sub-label">M</td>';
+                r += '<td class="sub-label ts">D</td><td class="sub-label">Mi</td><td class="sub-label">M</td>';
             }
         }
         r += '<td class="side-cell"></td>';
@@ -707,6 +814,88 @@ function flashInvalid(el) {
     el.style.background = '#fdedec';
     setTimeout(() => { el.style.background = ''; }, 400);
 }
+
+// =====================================================
+// 화면 숫자패드 (시스템 키보드 대체)
+// =====================================================
+let activeNumInput = null;
+
+document.addEventListener('focusin', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('.chart-container input[type="text"]')
+        && !t.classList.contains('disabled-input')) {
+        activeNumInput = t;
+    }
+});
+
+function padPress(k) {
+    if (k === 'hide') { toggleNumpad(false); return; }
+    const el = activeNumInput;
+    if (!el || el.classList.contains('disabled-input')) return;
+    const isBOP = el.classList.contains('bop-input');
+    if (k === 'next') { moveToNext(el); return; }
+    if (k === 'prev') { moveToPrev(el); return; }
+    if (k === 'del') {
+        el.value = '';
+        if (isBOP) el.classList.remove('active');
+        el.focus();
+        return;
+    }
+    if (k === 'minus') {
+        // 음수는 GR(퇴축)만 허용
+        if (isBOP || el.getAttribute('data-measure') !== 'GR') { flashInvalid(el); return; }
+        el.value = el.value.startsWith('-') ? el.value.slice(1) : ('-' + el.value);
+        el.focus();
+        return;
+    }
+    // BOP 칸: 1 = 출혈, 0 = 없음 (키보드와 동일)
+    if (isBOP) {
+        if (k === '1') { el.value = '1'; el.classList.add('active'); moveToNext(el); }
+        else if (k === '0') { el.value = ''; el.classList.remove('active'); moveToNext(el); }
+        else flashInvalid(el);
+        return;
+    }
+    // 숫자: 이미 2자리면 새 숫자로 교체, 아니면 이어붙임 (기존 타이핑 로직과 동일 검증)
+    if (el.value.replace('-', '').length >= 2) el.value = k;
+    else el.value += k;
+    el.focus();
+    handleNumInput(el);
+}
+
+function toggleNumpad(open) {
+    const pad = document.getElementById('numpad');
+    const showBtn = document.getElementById('numpadShow');
+    if (open) {
+        pad.classList.add('open');
+        showBtn.style.display = 'none';
+        document.body.classList.add('pad-open');
+    } else {
+        pad.classList.remove('open');
+        showBtn.style.display = 'block';
+        document.body.classList.remove('pad-open');
+    }
+    try { localStorage.setItem('perio_pad_open', open ? '1' : '0'); } catch (e) {}
+}
+
+(function initNumpad() {
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    let saved = null;
+    try { saved = localStorage.getItem('perio_pad_open'); } catch (e) {}
+    // 터치 기기: 기본 열림(이전 선택 기억), 데스크톱: 기본 닫힘·버튼 숨김
+    if (saved === '1' || (saved === null && coarse)) {
+        toggleNumpad(true);
+    } else if (coarse) {
+        document.getElementById('numpadShow').style.display = 'block';
+    }
+    // 패드 버튼: pointerdown에서 처리해 입력칸 포커스를 뺏지 않음
+    document.querySelectorAll('#numpad .np').forEach(b => {
+        b.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            padPress(b.getAttribute('data-k'));
+        });
+        b.addEventListener('click', (e) => e.preventDefault());
+    });
+})();
 
 function handleNavKey(event, el) {
     if (el.classList.contains('disabled-input')) return;
