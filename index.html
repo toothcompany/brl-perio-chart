@@ -349,6 +349,24 @@ body {
     touch-action: manipulation;
 }
 .numpad.open { display: grid; }
+.numpad-handle {
+    grid-column: 1 / -1;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+    margin: -4px 0 -2px;
+}
+.numpad-handle::before {
+    content: '';
+    width: 48px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.45);
+}
+.numpad-handle:active { cursor: grabbing; }
 .np {
     height: 50px;
     border: none;
@@ -383,6 +401,43 @@ body {
     display: none;
 }
 body.pad-open { padding-bottom: 280px; }
+
+/* ===================================================== */
+/* 차트 확대/축소 컨트롤 */
+/* ===================================================== */
+.zoom-ctrl {
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(44, 62, 80, 0.96);
+    border-radius: 28px;
+    padding: 5px 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+.zoom-ctrl button {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    color: #2c3e50;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.zoom-ctrl button:active { background: #d6eaf8; transform: scale(0.95); }
+.zoom-val {
+    color: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 44px;
+    text-align: center;
+}
 
 .tooth-table input.bop-input.disabled-input {
     background: #e9ecef !important;
@@ -529,6 +584,7 @@ body.pad-open { padding-bottom: 280px; }
 
 <!-- 화면 숫자패드 (시스템 키보드 대체) -->
 <div class="numpad" id="numpad">
+    <div class="numpad-handle" id="numpadHandle" title="드래그하여 이동"></div>
     <button class="np" data-k="7">7</button>
     <button class="np" data-k="8">8</button>
     <button class="np" data-k="9">9</button>
@@ -546,6 +602,13 @@ body.pad-open { padding-bottom: 280px; }
     <button class="np np-fn np-hide" data-k="hide">⌨ 패드 숨김</button>
 </div>
 <button class="numpad-show" id="numpadShow" onclick="toggleNumpad(true)" title="숫자패드 열기">⌨</button>
+
+<!-- 차트 확대/축소 -->
+<div class="zoom-ctrl" id="zoomCtrl">
+    <button onpointerdown="event.preventDefault()" onclick="zoomChart(-0.1)" title="축소">−</button>
+    <span class="zoom-val" id="zoomVal">100%</span>
+    <button onpointerdown="event.preventDefault()" onclick="zoomChart(0.1)" title="확대">＋</button>
+</div>
 
 <script>
 // =====================================================
@@ -869,6 +932,7 @@ function toggleNumpad(open) {
         pad.classList.add('open');
         showBtn.style.display = 'none';
         document.body.classList.add('pad-open');
+        padReclamp();
     } else {
         pad.classList.remove('open');
         showBtn.style.display = 'block';
@@ -876,6 +940,70 @@ function toggleNumpad(open) {
     }
     try { localStorage.setItem('perio_pad_open', open ? '1' : '0'); } catch (e) {}
 }
+
+// 패드가 화면 밖으로 나가지 않게 위치 보정 (이동해둔 경우만)
+function padReclamp() {
+    const pad = document.getElementById('numpad');
+    if (!pad || !pad.style.left) return;
+    const r = pad.getBoundingClientRect();
+    if (r.width === 0) return; // 닫힌 상태면 열 때 다시 보정됨
+    const x = Math.min(Math.max(0, r.left), Math.max(0, window.innerWidth - r.width));
+    const y = Math.min(Math.max(0, r.top), Math.max(0, window.innerHeight - r.height));
+    pad.style.left = x + 'px';
+    pad.style.top = y + 'px';
+}
+
+// 손잡이 드래그로 패드 이동 (기기별 위치 기억)
+(function initPadDrag() {
+    const pad = document.getElementById('numpad');
+    const handle = document.getElementById('numpadHandle');
+    if (!pad || !handle) return;
+    let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+
+    function setPos(x, y) {
+        pad.style.left = x + 'px';
+        pad.style.top = y + 'px';
+        pad.style.right = 'auto';
+        pad.style.bottom = 'auto';
+    }
+    function clampXY(x, y) {
+        const r = pad.getBoundingClientRect();
+        return [
+            Math.min(Math.max(0, x), Math.max(0, window.innerWidth - r.width)),
+            Math.min(Math.max(0, y), Math.max(0, window.innerHeight - r.height))
+        ];
+    }
+
+    handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        dragging = true;
+        const r = pad.getBoundingClientRect();
+        sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top;
+        try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    handle.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const [x, y] = clampXY(ox + e.clientX - sx, oy + e.clientY - sy);
+        setPos(x, y);
+    });
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        const r = pad.getBoundingClientRect();
+        try { localStorage.setItem('perio_pad_pos', JSON.stringify([Math.round(r.left), Math.round(r.top)])); } catch (e) {}
+    }
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
+
+    // 저장된 위치 복원
+    try {
+        const saved = JSON.parse(localStorage.getItem('perio_pad_pos') || 'null');
+        if (Array.isArray(saved) && saved.length === 2) setPos(saved[0], saved[1]);
+    } catch (e) {}
+
+    // 화면 회전·크기 변경 시 화면 안으로
+    window.addEventListener('resize', padReclamp);
+})();
 
 (function initNumpad() {
     const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
@@ -965,6 +1093,30 @@ function getAllInputsInOrder() {
     }
     return inputs;
 }
+
+// =====================================================
+// 차트 확대/축소 (기기별 기억)
+// =====================================================
+let chartZoom = 1;
+
+function zoomChart(delta) {
+    chartZoom = Math.round(Math.min(1.5, Math.max(0.5, chartZoom + delta)) * 10) / 10;
+    applyChartZoom();
+}
+
+function applyChartZoom() {
+    document.querySelectorAll('.chart-container').forEach(c => { c.style.zoom = chartZoom; });
+    const v = document.getElementById('zoomVal');
+    if (v) v.textContent = Math.round(chartZoom * 100) + '%';
+    try { localStorage.setItem('perio_chart_zoom', String(chartZoom)); } catch (e) {}
+}
+
+(function initZoom() {
+    let z = null;
+    try { z = parseFloat(localStorage.getItem('perio_chart_zoom')); } catch (e) {}
+    if (z && z >= 0.5 && z <= 1.5) chartZoom = z;
+    applyChartZoom();
+})();
 
 // =====================================================
 // DATA COLLECTION
