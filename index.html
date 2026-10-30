@@ -610,7 +610,7 @@ body.pad-open { padding-bottom: 280px; }
 <div class="keyboard-hint">
     <strong>입력 안내:</strong>
     태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시, 손잡이 드래그로 이동) |
-    PD·GR 칸을 <strong>가로로 드래그하면 범위 선택 → 숫자 한 번에 입력</strong> | 숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
+    PD·GR 칸을 <strong>가로로 드래그하면 범위 선택 → 숫자 한 번에 입력, ⌫로 한 번에 지움</strong> | 숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
     결측치: 상단 패널의 치아번호 버튼 탭 |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
@@ -1015,6 +1015,7 @@ function padPress(k) {
     if (k === 'next') { advanceFrom(el); return; }
     if (k === 'prev') { retreatFrom(el); return; }
     if (k === 'del') {
+        if (dragSel.active && dragSel.cells.indexOf(el) !== -1) { applyBulkClear(); return; }
         el.value = '';
         if (isBOP) el.classList.remove('active');
         el.focus();
@@ -1180,6 +1181,26 @@ function applyBulkFill(v) {
     advanceFrom(flowEnd);
 }
 
+// 드래그 선택 범위 일괄 지우기 (⌫ 또는 Backspace/Delete)
+function applyBulkClear() {
+    const cells = dragSel.cells.slice();
+    let n = 0;
+    for (const c of cells) {
+        if (c.classList.contains('disabled-input')) continue;
+        c.value = '';
+        n++;
+    }
+    // 선택 시작 칸(흐름 기준 첫 칸)으로 포커스를 되돌려 바로 재입력 가능하게
+    let d;
+    if (moveMode === 'fwd') d = 1;
+    else if (moveMode === 'rev') d = -1;
+    else d = rowDirFor(cells[0]);
+    const flowStart = d === 1 ? cells[0] : cells[cells.length - 1];
+    clearDragSel();
+    showStatus(`${n}개 칸을 지웠습니다.`);
+    if (flowStart) flowStart.focus();
+}
+
 (function initDragSelect() {
     let pid = null, sx = 0, sy = 0, dragging = false, anchor = null;
 
@@ -1336,6 +1357,12 @@ function padReclamp() {
 
 function handleNavKey(event, el) {
     if (el.classList.contains('disabled-input')) return;
+    if ((event.key === 'Backspace' || event.key === 'Delete')
+        && dragSel.active && dragSel.cells.indexOf(el) !== -1) {
+        event.preventDefault();
+        applyBulkClear();
+        return;
+    }
     if (event.key === 'Enter' || event.key === 'Tab') {
         if (!event.shiftKey) { event.preventDefault(); moveToNext(el); }
     }
