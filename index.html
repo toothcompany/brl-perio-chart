@@ -190,6 +190,11 @@ body {
     color: #999;
     text-decoration: line-through;
 }
+.tooth-num-cell.implant-active {
+    background: #d6eaf8;
+    color: #1f618d;
+    text-decoration: none;
+}
 /* ===== 결측치 선택 패널 (차트 위, 큰 터치 버튼) ===== */
 .missing-panel {
     background: #fff;
@@ -258,6 +263,18 @@ body {
     text-decoration: line-through;
 }
 .mt-btn.on:active { background: #c0392b; }
+.mt-btn.imp {
+    background: #2980b9;
+    border-color: #1f618d;
+    color: #fff;
+    text-decoration: none;
+}
+.mt-btn.imp::after { content: ' I'; font-size: 11px; opacity: .85; }
+.mt-btn.imp:active { background: #1f618d; }
+.mt-legend { display: inline-flex; gap: 10px; align-items: center; font-size: 12px; color: #555; }
+.mt-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 3px; }
+.mt-legend .lg-miss { background: #e74c3c; }
+.mt-legend .lg-imp { background: #2980b9; }
 .sub-label {
     font-size: 9px;
     color: #999;
@@ -612,7 +629,7 @@ body.pad-open { padding-bottom: 280px; }
     태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시, 손잡이 드래그로 이동) |
     PD·GR 칸을 <strong>가로로 드래그하면 범위 선택 → 숫자 한 번에 입력, ⌫로 한 번에 지움</strong> | 숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
-    결측치: 상단 패널의 치아번호 버튼 탭 |
+    결측치: 상단 패널 버튼 탭 (결측=88 → 임플란트=99 → 해제) |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
     <strong>GR·BOP 빈칸은 저장 시 자동 0 처리</strong> — <strong>GR 빈칸 0</strong> 버튼으로 화면에 미리 채울 수도 있음, <strong>PD는 전체 입력 필수 (0 불가)</strong>
 </div>
@@ -641,8 +658,8 @@ body.pad-open { padding-bottom: 280px; }
 <!-- 결측치 선택 패널 -->
 <div class="missing-panel">
     <div class="missing-panel-head">
-        <h2>결측치 <span class="missing-panel-hint">— 없는 치아 번호를 누르세요 (빨간색 = 결측, 다시 누르면 해제)</span></h2>
-        <span class="missing-count" id="missingCount">결측 0개</span>
+        <h2>결측치 / 임플란트 <span class="missing-panel-hint">— 치아번호를 누를 때마다 결측 → 임플란트 → 해제 순으로 바뀝니다</span></h2>
+        <span class="mt-legend"><span><i class="lg-miss"></i>결측 (88)</span><span><i class="lg-imp"></i>임플란트 (99)</span><span class="missing-count" id="missingCount">결측 0 · 임플란트 0</span></span>
     </div>
     <div id="missingPanelRows"></div>
 </div>
@@ -716,7 +733,8 @@ const lowerTeeth = [...lowerRightTeeth, ...lowerLeftTeeth];
 
 let savedPatients = [];
 let editingIndex = -1;
-let missingTeeth = new Set();
+let missingTeeth = new Set();   // 결측(88)
+let implantTeeth = new Set();   // 임플란트(99)
 
 // =====================================================
 // EXCEL HEADER BUILDER (matches original exactly)
@@ -916,23 +934,37 @@ function buildMissingPanel() {
 
 function updateMissingCount() {
     const el = document.getElementById('missingCount');
-    if (el) el.textContent = `결측 ${missingTeeth.size}개`;
+    if (el) el.textContent = `결측 ${missingTeeth.size} · 임플란트 ${implantTeeth.size}`;
 }
 
-function setMissing(tooth, on) {
-    if (on) missingTeeth.add(tooth); else missingTeeth.delete(tooth);
+// 치아 상태: '' (정상) | 'missing' (결측, 88) | 'implant' (임플란트, 99)
+function toothStatus(tooth) {
+    if (missingTeeth.has(tooth)) return 'missing';
+    if (implantTeeth.has(tooth)) return 'implant';
+    return '';
+}
+
+function setToothStatus(tooth, status) {
+    missingTeeth.delete(tooth); implantTeeth.delete(tooth);
+    if (status === 'missing') missingTeeth.add(tooth);
+    else if (status === 'implant') implantTeeth.add(tooth);
+    const locked = status !== '';
 
     // 패널 버튼 상태
-    document.querySelectorAll(`.mt-btn[data-tooth="${tooth}"]`).forEach(b => b.classList.toggle('on', on));
+    document.querySelectorAll(`.mt-btn[data-tooth="${tooth}"]`).forEach(b => {
+        b.classList.toggle('on', status === 'missing');
+        b.classList.toggle('imp', status === 'implant');
+    });
 
     // 차트의 치아번호 셀 표시
     document.querySelectorAll(`[id^="tn_"][id$="_${tooth}"]`).forEach(cell => {
-        cell.classList.toggle('missing-active', on);
+        cell.classList.toggle('missing-active', status === 'missing');
+        cell.classList.toggle('implant-active', status === 'implant');
     });
 
-    // 해당 치아 입력칸 비활성/활성
+    // 해당 치아 입력칸 비활성/활성 (결측·임플란트 모두 잠금)
     document.querySelectorAll(`.chart-container input[data-tooth="${tooth}"]`).forEach(input => {
-        if (on) {
+        if (locked) {
             input.classList.add('disabled-input');
             input.setAttribute('tabindex', '-1');
             if (input.classList.contains('bop-input')) input.classList.remove('active');
@@ -945,15 +977,20 @@ function setMissing(tooth, on) {
     updateMissingCount();
 }
 
+// 하위 호환용 래퍼
+function setMissing(tooth, on) { setToothStatus(tooth, on ? 'missing' : ''); }
+
+// 버튼 탭: 정상 → 결측 → 임플란트 → 정상
 function toggleMissing(tooth) {
-    setMissing(tooth, !missingTeeth.has(tooth));
+    const s = toothStatus(tooth);
+    setToothStatus(tooth, s === '' ? 'missing' : (s === 'missing' ? 'implant' : ''));
 }
 
 function clearAllMissing() {
-    for (const t of [...missingTeeth]) setMissing(t, false);
-    missingTeeth = new Set();
-    document.querySelectorAll('.mt-btn.on').forEach(b => b.classList.remove('on'));
-    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
+    for (const t of [...missingTeeth, ...implantTeeth]) setToothStatus(t, '');
+    missingTeeth = new Set(); implantTeeth = new Set();
+    document.querySelectorAll('.mt-btn.on, .mt-btn.imp').forEach(b => b.classList.remove('on', 'imp'));
+    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active', 'implant-active'));
     updateMissingCount();
 }
 
@@ -1480,7 +1517,9 @@ function collectData() {
         const toothNum = parseInt(tooth);
         const key = `${measure}_${tooth}_${pos}_1`;
 
-        if (missingTeeth.has(toothNum)) continue;
+        // 결측 = 88, 임플란트 = 99 (GR·PD·BOP 전 항목)
+        if (missingTeeth.has(toothNum)) { data[key] = 88; continue; }
+        if (implantTeeth.has(toothNum)) { data[key] = 99; continue; }
 
         const val = input.value.trim();
 
@@ -1502,7 +1541,7 @@ function validatePD() {
     const emptyPD = [];
     for (const input of pdInputs) {
         const tooth = parseInt(input.dataset.tooth);
-        if (missingTeeth.has(tooth)) continue;
+        if (missingTeeth.has(tooth) || implantTeeth.has(tooth)) continue;
         if (input.value.trim() === '') {
             emptyPD.push(input);
         }
@@ -1510,7 +1549,7 @@ function validatePD() {
     return emptyPD;
 }
 
-function loadData(data, missing) {
+function loadData(data, missing, implant) {
     const allInputs = document.querySelectorAll('.chart-container input[type="text"]');
     for (const input of allInputs) {
         input.value = '';
@@ -1519,9 +1558,10 @@ function loadData(data, missing) {
         input.removeAttribute('tabindex');
     }
 
-    // Reset missing, then restore from record
+    // Reset, then restore missing / implant from record
     clearAllMissing();
-    for (const tooth of (missing || [])) setMissing(tooth, true);
+    for (const tooth of (missing || [])) setToothStatus(tooth, 'missing');
+    for (const tooth of (implant || [])) setToothStatus(tooth, 'implant');
 
     for (const [key, val] of Object.entries(data)) {
         const parts = key.split('_');
@@ -1659,6 +1699,7 @@ function savePatient() {
         visit: visit,
         data: data,
         missingTeeth: [...missingTeeth],
+        implantTeeth: [...implantTeeth],
         savedAt: new Date().toLocaleString('ko-KR')
     };
 
@@ -1717,7 +1758,7 @@ function editPatient(index) {
     document.getElementById('examDate').value = record.examDate || '';
     document.getElementById('visit').value = record.visit || 'baseline';
     editingIndex = index;
-    loadData(record.data, record.missingTeeth);
+    loadData(record.data, record.missingTeeth, record.implantTeeth);
     showStatus(`환자 ${record.id} 데이터를 편집 중입니다.`);
     window.scrollTo(0, 0);
 }
@@ -1890,13 +1931,14 @@ function updatePatientList() {
         const p = savedPatients[i];
         const dataCount = Object.keys(p.data).length;
         const missingCount = (p.missingTeeth || []).length;
+        const implantCount = (p.implantTeeth || []).length;
         html += `<tr>
             <td>${i + 1}</td>
             <td><strong>${p.id}</strong></td>
             <td>${p.name || '-'}</td>
             <td>${visitLabel(p.visit || 'baseline')}</td>
             <td>${p.examDate || '-'}</td>
-            <td>${p.savedAt} (${dataCount}개 항목, 결측 ${missingCount}개)</td>
+            <td>${p.savedAt} (${dataCount}개 항목, 결측 ${missingCount} · 임플란트 ${implantCount})</td>
             <td>
                 <button class="btn-edit" onclick="editPatient(${i})">수정</button>
                 <button class="btn-delete" onclick="deletePatient(${i})">삭제</button>
