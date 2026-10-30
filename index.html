@@ -190,14 +190,74 @@ body {
     color: #999;
     text-decoration: line-through;
 }
-.missing-cb {
-    width: 13px;
-    height: 13px;
-    cursor: pointer;
-    vertical-align: middle;
-    margin-left: 2px;
-    accent-color: #e74c3c;
+/* ===== 결측치 선택 패널 (차트 위, 큰 터치 버튼) ===== */
+.missing-panel {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 12px 16px;
+    margin-bottom: 15px;
+    border-left: 4px solid #e74c3c;
 }
+.missing-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.missing-panel h2 {
+    font-size: 15px;
+    color: #2c3e50;
+    margin: 0;
+}
+.missing-panel-hint { font-size: 12px; color: #7f8c8d; }
+.missing-count {
+    font-size: 12px;
+    font-weight: bold;
+    color: #e74c3c;
+    background: #fdedec;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+.mt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0;
+}
+.mt-arch {
+    width: 38px;
+    min-width: 38px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #7f8c8d;
+    text-align: center;
+}
+.mt-sep { width: 10px; min-width: 10px; border-left: 2px solid #b8c4cc; height: 30px; margin: 0 2px; }
+.mt-btn {
+    flex: 1;
+    min-width: 38px;
+    height: 44px;
+    border: 2px solid #cfd8dc;
+    border-radius: 8px;
+    background: #f8f9fa;
+    color: #2c3e50;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background .1s, color .1s;
+}
+.mt-btn:active { background: #e3eaf0; }
+.mt-btn.on {
+    background: #e74c3c;
+    border-color: #c0392b;
+    color: #fff;
+    text-decoration: line-through;
+}
+.mt-btn.on:active { background: #c0392b; }
 .sub-label {
     font-size: 9px;
     color: #999;
@@ -251,6 +311,13 @@ body {
     border-color: #dee2e6 !important;
     box-shadow: none !important;
 }
+/* PD·GR: 가로 드래그는 범위 선택, 세로 드래그는 스크롤 */
+.tooth-table input[data-measure="PD"],
+.tooth-table input[data-measure="GR"] { touch-action: pan-y; }
+.tooth-table input.sel {
+    background: #d6eaf8 !important;
+    border-color: #3498db !important;
+}
 /* ===================================================== */
 /* 태블릿 최적화 (아이패드 / 갤럭시탭) */
 /* ===================================================== */
@@ -273,7 +340,6 @@ body {
         font-size: 16px;   /* iOS 자동 확대 방지: 16px 이상 */
     }
     .tooth-table .tooth-col { width: 36px; min-width: 36px; max-width: 36px; }
-    .missing-cb { width: 20px; height: 20px; }
     .tooth-num-cell { font-size: 15px; padding: 6px 0; }
     .scroll-hint { display: block; }
     .header-controls input[type="text"],
@@ -292,7 +358,6 @@ body {
         font-size: 15px;
     }
     .tooth-table .tooth-col { width: 32px; min-width: 32px; max-width: 32px; }
-    .missing-cb { width: 18px; height: 18px; }
     .btn { min-height: 40px; }
     .header-controls select,
     .header-controls input { min-height: 38px; }
@@ -328,7 +393,11 @@ body {
     .tooth-table .side-cell { width: 14px; min-width: 14px; font-size: 10px; }
     .quad-sep { border-left-width: 2px; }
     .tooth-num-cell { font-size: 12px; padding: 2px 0; }
-    .missing-cb { width: 14px; height: 14px; margin-left: 1px; }
+    .missing-panel { padding: 8px 10px; margin-bottom: 8px; }
+    .missing-panel h2 { font-size: 13px; }
+    .missing-panel-hint { display: none; }
+    .mt-btn { height: 36px; min-width: 30px; font-size: 14px; }
+    .mt-sep { height: 24px; }
     .keyboard-hint { display: none; }
     .scroll-hint { display: none; }
 }
@@ -541,9 +610,9 @@ body.pad-open { padding-bottom: 280px; }
 <div class="keyboard-hint">
     <strong>입력 안내:</strong>
     태블릿에서는 <strong>화면 숫자패드</strong>로 입력 (⌨ 버튼으로 숨김/표시, 손잡이 드래그로 이동) |
-    숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
+    PD·GR 칸을 <strong>가로로 드래그하면 범위 선택 → 숫자 한 번에 입력</strong> | 숫자 입력 시 자동 이동 — 기본 <strong>⇄자동</strong>: 상악 구개측 줄은 27→17, 하악 협측 줄은 37→47 역방향 진행 (패드 버튼으로 자동/정/역 전환) |
     BOP: 셀 탭 또는 패드 <strong>1</strong>(출혈)·<strong>0</strong>(없음) |
-    결측치: 치아번호 옆 체크박스 |
+    결측치: 상단 패널의 치아번호 버튼 탭 |
     <strong>회차별로 따로 저장</strong>, <strong>저장 시 클라우드 + 구글시트 자동 전송</strong> |
     <strong>GR·BOP 빈칸은 저장 시 자동 0 처리</strong> — <strong>GR 빈칸 0</strong> 버튼으로 화면에 미리 채울 수도 있음, <strong>PD는 전체 입력 필수 (0 불가)</strong>
 </div>
@@ -567,6 +636,15 @@ body.pad-open { padding-bottom: 280px; }
         저장 버튼을 누를 때마다 회차 탭(Baseline/Mid-point/End-point)에 행으로 자동 누적됩니다.
         URL은 이 기기에 저장되며, 같은 공유 계정 시트로 모든 조사자의 데이터가 모입니다.
     </div>
+</div>
+
+<!-- 결측치 선택 패널 -->
+<div class="missing-panel">
+    <div class="missing-panel-head">
+        <h2>결측치 <span class="missing-panel-hint">— 없는 치아 번호를 누르세요 (빨간색 = 결측, 다시 누르면 해제)</span></h2>
+        <span class="missing-count" id="missingCount">결측 0개</span>
+    </div>
+    <div id="missingPanelRows"></div>
 </div>
 
 <!-- 상악 (Upper) -->
@@ -764,9 +842,7 @@ function buildCombinedChart(containerId, teeth, jaw) {
         for (let i = 0; i < teeth.length; i++) {
             const tooth = teeth[i];
             if (i === 7) r += '<td class="quad-sep" rowspan="1"></td>';
-            r += `<td colspan="3" class="tooth-num-cell" id="tn_${containerId}_${tooth}">`;
-            r += `${tooth}<input type="checkbox" class="missing-cb" data-tooth="${tooth}" onchange="toggleMissing(${tooth})" title="결측치">`;
-            r += '</td>';
+            r += `<td colspan="3" class="tooth-num-cell" id="tn_${containerId}_${tooth}">${tooth}</td>`;
         }
         r += '<td class="side-cell"></td>';
         r += '</tr>';
@@ -817,38 +893,46 @@ function buildCombinedChart(containerId, teeth, jaw) {
 function buildAllCharts() {
     buildCombinedChart('upperChart', upperTeeth, 'upper');
     buildCombinedChart('lowerChart', lowerTeeth, 'lower');
+    buildMissingPanel();
 }
 
 // =====================================================
-// MISSING TOOTH HANDLING
+// MISSING TOOTH HANDLING (상단 패널의 큰 버튼으로 토글)
 // =====================================================
-function toggleMissing(tooth) {
-    // Find any checkbox for this tooth to get state
-    const allCbs = document.querySelectorAll(`input.missing-cb[data-tooth="${tooth}"]`);
-    // Use the one that was just clicked (it has the new state)
-    let isChecked = false;
-    for (const cb of allCbs) {
-        if (cb.matches(':checked')) { isChecked = true; break; }
+function buildMissingPanel() {
+    const wrap = document.getElementById('missingPanelRows');
+    if (!wrap) return;
+    function row(label, teeth) {
+        let h = `<div class="mt-row"><span class="mt-arch">${label}</span>`;
+        for (let i = 0; i < teeth.length; i++) {
+            if (i === 7) h += '<span class="mt-sep"></span>';
+            h += `<button type="button" class="mt-btn" data-tooth="${teeth[i]}" onclick="toggleMissing(${teeth[i]})">${teeth[i]}</button>`;
+        }
+        return h + '</div>';
     }
+    wrap.innerHTML = row('상악', upperTeeth) + row('하악', lowerTeeth);
+    updateMissingCount();
+}
 
-    // Sync all checkboxes
-    allCbs.forEach(cb => { cb.checked = isChecked; });
+function updateMissingCount() {
+    const el = document.getElementById('missingCount');
+    if (el) el.textContent = `결측 ${missingTeeth.size}개`;
+}
 
-    if (isChecked) {
-        missingTeeth.add(tooth);
-    } else {
-        missingTeeth.delete(tooth);
-    }
+function setMissing(tooth, on) {
+    if (on) missingTeeth.add(tooth); else missingTeeth.delete(tooth);
 
-    // Update tooth-num-cell styling
+    // 패널 버튼 상태
+    document.querySelectorAll(`.mt-btn[data-tooth="${tooth}"]`).forEach(b => b.classList.toggle('on', on));
+
+    // 차트의 치아번호 셀 표시
     document.querySelectorAll(`[id^="tn_"][id$="_${tooth}"]`).forEach(cell => {
-        cell.classList.toggle('missing-active', isChecked);
+        cell.classList.toggle('missing-active', on);
     });
 
-    // Disable/enable all data inputs for this tooth
-    document.querySelectorAll(`input[data-tooth="${tooth}"]`).forEach(input => {
-        if (input.classList.contains('missing-cb')) return;
-        if (isChecked) {
+    // 해당 치아 입력칸 비활성/활성
+    document.querySelectorAll(`.chart-container input[data-tooth="${tooth}"]`).forEach(input => {
+        if (on) {
             input.classList.add('disabled-input');
             input.setAttribute('tabindex', '-1');
             if (input.classList.contains('bop-input')) input.classList.remove('active');
@@ -858,6 +942,19 @@ function toggleMissing(tooth) {
             input.removeAttribute('tabindex');
         }
     });
+    updateMissingCount();
+}
+
+function toggleMissing(tooth) {
+    setMissing(tooth, !missingTeeth.has(tooth));
+}
+
+function clearAllMissing() {
+    for (const t of [...missingTeeth]) setMissing(t, false);
+    missingTeeth = new Set();
+    document.querySelectorAll('.mt-btn.on').forEach(b => b.classList.remove('on'));
+    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
+    updateMissingCount();
 }
 
 // =====================================================
@@ -883,6 +980,10 @@ function handleNumInput(el) {
         el.value = el.value.replace(/[^0-9\-]/g, '');
     }
     if (el.value.length === 1 && el.value !== '-') {
+        if (dragSel.active && dragSel.cells.indexOf(el) !== -1) {
+            applyBulkFill(el.value);
+            return;
+        }
         advanceFrom(el);
     }
 }
@@ -1045,6 +1146,92 @@ function updateDirUI() {
         if (m === 'fwd' || m === 'rev' || m === 'auto') moveMode = m;
     } catch (e) {}
     updateDirUI();
+})();
+
+// =====================================================
+// 가로 드래그 범위 선택 → 숫자 일괄 입력 (PD·GR 줄)
+// =====================================================
+let dragSel = { active: false, cells: [] };
+
+function clearDragSel() {
+    document.querySelectorAll('.tooth-table input.sel').forEach(i => i.classList.remove('sel'));
+    dragSel = { active: false, cells: [] };
+}
+
+function rowCellsOf(el) {
+    const key = rowKeyOf(el);
+    return enabledInputs().filter(i => rowKeyOf(i) === key);
+}
+
+function applyBulkFill(v) {
+    const cells = dragSel.cells.slice();
+    for (const c of cells) {
+        if (c.classList.contains('disabled-input')) continue;
+        c.value = v;
+    }
+    let d;
+    if (moveMode === 'fwd') d = 1;
+    else if (moveMode === 'rev') d = -1;
+    else d = rowDirFor(cells[0]);
+    const flowEnd = d === 1 ? cells[cells.length - 1] : cells[0];
+    const n = cells.length;
+    clearDragSel();
+    showStatus(`${n}개 칸에 ${v} 일괄 입력됨.`);
+    advanceFrom(flowEnd);
+}
+
+(function initDragSelect() {
+    let pid = null, sx = 0, sy = 0, dragging = false, anchor = null;
+
+    document.addEventListener('pointerdown', (e) => {
+        const t = e.target;
+        if (!t || !t.matches || !t.matches('.chart-container input[type="text"]')) return;
+        const m = t.getAttribute('data-measure');
+        if (m !== 'PD' && m !== 'GR') return;
+        if (t.classList.contains('disabled-input')) return;
+        pid = e.pointerId; sx = e.clientX; sy = e.clientY;
+        anchor = t; dragging = false;
+    });
+
+    document.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== pid || !anchor) return;
+        const dx = e.clientX - sx, dy = e.clientY - sy;
+        if (!dragging) {
+            if (Math.abs(dx) < 10) return;
+            if (Math.abs(dy) > Math.abs(dx)) { pid = null; anchor = null; return; } // 세로 = 스크롤
+            dragging = true;
+        }
+        e.preventDefault();
+        let under = document.elementFromPoint(e.clientX, e.clientY);
+        if (!under || under.tagName !== 'INPUT') return;
+        if (rowKeyOf(under) !== rowKeyOf(anchor)) return; // 같은 줄만
+        if (under.classList.contains('disabled-input')) return;
+        const row = rowCellsOf(anchor);
+        const a = row.indexOf(anchor), b = row.indexOf(under);
+        if (a < 0 || b < 0) return;
+        const lo = Math.min(a, b), hi = Math.max(a, b);
+        document.querySelectorAll('.tooth-table input.sel').forEach(i => i.classList.remove('sel'));
+        dragSel.cells = row.slice(lo, hi + 1);
+        dragSel.active = true;
+        for (const c of dragSel.cells) c.classList.add('sel');
+    });
+
+    document.addEventListener('pointerup', (e) => {
+        if (e.pointerId !== pid) return;
+        pid = null;
+        if (dragging && dragSel.active && dragSel.cells.length > 1) {
+            if (anchor) anchor.focus();
+            showStatus(`${dragSel.cells.length}개 칸 선택됨 — 숫자를 누르면 한꺼번에 입력됩니다.`);
+        } else {
+            clearDragSel();
+        }
+        dragging = false; anchor = null;
+    });
+
+    // 선택 범위 밖 칸으로 포커스가 이동하면 선택 해제
+    document.addEventListener('focusin', (e) => {
+        if (dragSel.active && dragSel.cells.indexOf(e.target) === -1) clearDragSel();
+    });
 })();
 
 function toggleNumpad(open) {
@@ -1305,19 +1492,9 @@ function loadData(data, missing) {
         input.removeAttribute('tabindex');
     }
 
-    // Reset missing
-    missingTeeth = new Set(missing || []);
-    document.querySelectorAll('.missing-cb').forEach(cb => {
-        cb.checked = false;
-    });
-    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
-
-    for (const tooth of missingTeeth) {
-        document.querySelectorAll(`input.missing-cb[data-tooth="${tooth}"]`).forEach(cb => {
-            cb.checked = true;
-        });
-        toggleMissing(tooth);
-    }
+    // Reset missing, then restore from record
+    clearAllMissing();
+    for (const tooth of (missing || [])) setMissing(tooth, true);
 
     for (const [key, val] of Object.entries(data)) {
         const parts = key.split('_');
@@ -1499,9 +1676,7 @@ function newPatient() {
         input.classList.remove('disabled-input');
         input.removeAttribute('tabindex');
     }
-    missingTeeth = new Set();
-    document.querySelectorAll('.missing-cb').forEach(cb => { cb.checked = false; });
-    document.querySelectorAll('.tooth-num-cell').forEach(c => c.classList.remove('missing-active'));
+    clearAllMissing();
 
     showStatus('새 환자 데이터를 입력해주세요.');
     document.getElementById('patientId').focus();
